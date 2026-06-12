@@ -65,4 +65,24 @@ object NetworkModule {
     @Singleton
     fun provideTmdbApiService(retrofit: Retrofit): TmdbApiService =
         retrofit.create(TmdbApiService::class.java)
+
+    @Provides
+    @Singleton
+    fun provideGithubApiService(
+        loggingInterceptor: HttpLoggingInterceptor
+    ): com.hexaghost.flixora.data.api.GithubApiService {
+        val okHttpClient = OkHttpClient.Builder()
+            .addInterceptor(loggingInterceptor)
+            .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+
+        return Retrofit.Builder()
+            .baseUrl("https://api.github.com/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(com.hexaghost.flixora.data.api.GithubApiService::class.java)
+    }
 }
+

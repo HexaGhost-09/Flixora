@@ -22,16 +22,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hexaghost.flixora.BuildConfig
 import com.hexaghost.flixora.ui.theme.*
+import com.hexaghost.flixora.domain.update.UpdateManager
+import com.hexaghost.flixora.domain.update.UpdateState
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
+    updateManager: UpdateManager,
     modifier: Modifier = Modifier
 ) {
     var wifiOnlyDownload by remember { mutableStateOf(true) }
     var highQualityStreaming by remember { mutableStateOf(true) }
     var selectedLanguage by remember { mutableStateOf("English") }
+    var autoCheckUpdates by remember { mutableStateOf(updateManager.isAutoCheckEnabled) }
     
     val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var isCheckingUpdates by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -128,6 +137,16 @@ fun SettingsScreen(
             checked = highQualityStreaming,
             onCheckedChange = { highQualityStreaming = it }
         )
+        SettingsToggleRow(
+            icon = Icons.Filled.SystemUpdate,
+            title = "Auto Check Updates",
+            description = "Check for updates on app startup",
+            checked = autoCheckUpdates,
+            onCheckedChange = {
+                autoCheckUpdates = it
+                updateManager.isAutoCheckEnabled = it
+            }
+        )
 
         SettingsClickableRow(
             icon = Icons.Filled.Language,
@@ -148,15 +167,38 @@ fun SettingsScreen(
             onClick = { /* Clear logic */ }
         )
         SettingsClickableRow(
+            icon = Icons.Filled.CloudDownload,
+            title = if (isCheckingUpdates) "Checking for Updates..." else "Check for Updates",
+            value = "",
+            onClick = {
+                if (!isCheckingUpdates) {
+                    scope.launch {
+                        isCheckingUpdates = true
+                        val result = updateManager.checkForUpdates(isManual = true)
+                        isCheckingUpdates = false
+                        when (result) {
+                            is UpdateState.UpToDate -> {
+                                android.widget.Toast.makeText(context, "You are on the latest version!", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                            is UpdateState.Error -> {
+                                android.widget.Toast.makeText(context, "Update check failed: ${result.message}", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                            else -> {}
+                        }
+                    }
+                }
+            }
+        )
+        SettingsClickableRow(
             icon = Icons.Filled.Info,
             title = "App Version",
-            value = "1.0.2",
+            value = BuildConfig.VERSION_NAME,
             onClick = {}
         )
         SettingsClickableRow(
             icon = Icons.Filled.BugReport,
             title = "Build Code",
-            value = "2",
+            value = BuildConfig.VERSION_CODE.toString(),
             onClick = {}
         )
 

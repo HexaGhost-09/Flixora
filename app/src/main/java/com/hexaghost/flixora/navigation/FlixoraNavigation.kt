@@ -31,6 +31,9 @@ import com.hexaghost.flixora.presentation.player.PlayerScreen
 import com.hexaghost.flixora.presentation.search.SearchScreen
 import com.hexaghost.flixora.presentation.splash.SplashScreen
 import com.hexaghost.flixora.presentation.watchlist.WatchlistScreen
+import com.hexaghost.flixora.presentation.update.UpdateDialog
+import com.hexaghost.flixora.domain.update.UpdateManager
+import com.hexaghost.flixora.domain.update.UpdateState
 import com.hexaghost.flixora.ui.theme.*
 
 data class BottomNavItem(
@@ -48,13 +51,29 @@ val bottomNavItems = listOf(
 )
 
 @Composable
-fun FlixoraNavigation() {
+fun FlixoraNavigation(
+    updateManager: UpdateManager
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val currentRoute = currentDestination?.route
 
     val showBottomBar = bottomNavItems.any { it.route == currentRoute }
+
+    // Observe update state globally
+    val updateState by updateManager.updateState.collectAsState()
+
+    if (updateState is UpdateState.UpdateAvailable) {
+        val state = updateState as UpdateState.UpdateAvailable
+        UpdateDialog(
+            currentVersion = state.currentVersion,
+            latestVersion = state.latestVersion,
+            downloadUrl = state.downloadUrl,
+            releaseNotes = state.releaseNotes,
+            onDismiss = { updateManager.resetState() }
+        )
+    }
 
     Scaffold(
         containerColor = FlixoraDarkBg,
@@ -147,7 +166,7 @@ fun FlixoraNavigation() {
             }
 
             composable(Screen.Settings.route) {
-                SettingsScreen()
+                SettingsScreen(updateManager = updateManager)
             }
 
             composable(
