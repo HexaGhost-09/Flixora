@@ -30,11 +30,17 @@ class BrowseViewModel @Inject constructor(
     private val discoverByGenreUseCase: DiscoverByGenreUseCase
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(BrowseUiState())
+    companion object {
+        private var cachedState: BrowseUiState? = null
+    }
+
+    private val _uiState = MutableStateFlow(cachedState ?: BrowseUiState())
     val uiState: StateFlow<BrowseUiState> = _uiState.asStateFlow()
 
     init {
-        loadGenres()
+        if (cachedState == null) {
+            loadGenres()
+        }
     }
 
     private fun loadGenres() {
@@ -43,22 +49,26 @@ class BrowseViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(isLoadingGenres = false, genres = genres)
                 }
+                cachedState = _uiState.value
                 genres.firstOrNull()?.let { selectGenre(it) }
             }.onFailure { e ->
                 _uiState.update {
                     it.copy(isLoadingGenres = false, error = e.message)
                 }
+                cachedState = _uiState.value
             }
         }
     }
 
     fun selectGenre(genre: Genre) {
         _uiState.update { it.copy(selectedGenre = genre, isLoadingMedia = true, mediaList = emptyList()) }
+        cachedState = _uiState.value
         loadMediaForGenre(genre.id, _uiState.value.selectedTab)
     }
 
     fun selectTab(tab: Int) {
         _uiState.update { it.copy(selectedTab = tab, isLoadingMedia = true, mediaList = emptyList()) }
+        cachedState = _uiState.value
         _uiState.value.selectedGenre?.let { genre ->
             loadMediaForGenre(genre.id, tab)
         }
@@ -73,8 +83,10 @@ class BrowseViewModel @Inject constructor(
             }
             result.onSuccess { media ->
                 _uiState.update { it.copy(isLoadingMedia = false, mediaList = media) }
+                cachedState = _uiState.value
             }.onFailure { e ->
                 _uiState.update { it.copy(isLoadingMedia = false, error = e.message) }
+                cachedState = _uiState.value
             }
         }
     }
