@@ -67,11 +67,11 @@ jobs:
             STORE_PASS="${{ secrets.KEY_STORE_PASSWORD }}"
             KEY_PASS="${{ secrets.KEY_PASSWORD }}"
           else
-            echo "No signing key secret found. Generating a temporary self-signed key..."
-            keytool -genkeypair -v -keystore release.keystore -alias temp-alias -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Flixora, OU=HexaGhost, O=Flixora, L=City, S=State, C=US" -storepass temppass -keypass temppass
-            ALIAS="temp-alias"
-            STORE_PASS="temppass"
-            KEY_PASS="temppass"
+            echo "No signing key secret found. Using repository test-release.jks key..."
+            cp test-release.jks release.keystore
+            ALIAS="flixora-key"
+            STORE_PASS="flixorapass"
+            KEY_PASS="flixorapass"
           fi
           
           $APKSIGNER sign --ks release.keystore --ks-key-alias "$ALIAS" --ks-pass pass:"$STORE_PASS" --key-pass pass:"$KEY_PASS" --out app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/app-release-unsigned.apk
