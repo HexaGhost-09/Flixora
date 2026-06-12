@@ -1,4 +1,4 @@
-﻿package com.hexaghost.flixora.ui.components
+package com.hexaghost.flixora.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -87,8 +87,9 @@ fun HeroBanner(
                 // Content
                 Column(
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 20.dp, end = 20.dp, bottom = 24.dp)
+                        .align(Alignment.BottomCenter)
+                        .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Media type badge
                     Surface(
@@ -112,7 +113,8 @@ fun HeroBanner(
                         style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
                         color = FlixoraWhite,
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -120,7 +122,7 @@ fun HeroBanner(
                     // Rating + date
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.Center
                     ) {
                         if (media.voteAverage > 0) {
                             Row(
@@ -139,6 +141,9 @@ fun HeroBanner(
                                     color = FlixoraWhite
                                 )
                             }
+                        }
+                        if (media.voteAverage > 0 && media.releaseDate != null) {
+                            Spacer(modifier = Modifier.width(12.dp))
                         }
                         media.releaseDate?.take(4)?.let { year ->
                             Text(
