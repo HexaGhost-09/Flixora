@@ -1,0 +1,81 @@
+package com.hexaghost.flixora.presentation.browse
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.hexaghost.flixora.domain.model.Genre
+import com.hexaghost.flixora.domain.model.Media
+import com.hexaghost.flixora.domain.usecase.DiscoverByGenreUseCase
+import com.hexaghost.flixora.domain.usecase.GetGenresUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+data class BrowseUiState(
+    val isLoadingGenres: Boolean = true,
+    val isLoadingMedia: Boolean = false,
+    val genres: List<Genre> = emptyList(),
+    val selectedGenre: Genre? = null,
+    val selectedTab: Int = 0, // 0=Movies, 1=TV
+    val mediaList: List<Media> = emptyList(),
+    val error: String? = null
+)
+
+@HiltViewModel
+class BrowseViewModel @Inject constructor(
+    private val getGenresUseCase: GetGenresUseCase,
+    private val discoverByGenreUseCase: DiscoverByGenreUseCase
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(BrowseUiState())
+    val uiState: StateFlow<BrowseUiState> = _uiState.asStateFlow()
+
+    init {
+        loadGenres()
+    }
+
+    private fun loadGenres() {
+        viewModelScope.launch {
+            getGenresUseCase.getAllGenres().onSuccess { genres ->
+                _uiState.update {
+                    it.copy(isLoadingGenres = false, genres = genres)
+                }
+                genres.firstOrNull()?.let { selectGenre(it) }
+            }.onFailure { e ->
+                _uiState.update {
+                    it.copy(isLoadingGenres = false, error = e.message)
+                }
+            }
+        }
+    }
+
+    fun selectGenre(genre: Genre) {
+        _uiState.update { it.copy(selectedGenre = genre, isLoadingMedia = true, mediaList = emptyList()) }
+        loadMediaForGenre(genre.id, _uiState.value.selectedTab)
+    }
+
+    fun selectTab(tab: Int) {
+        _uiState.update { it.copy(selectedTab = tab, isLoadingMedia = true, mediaList = emptyList()) }
+        _uiState.value.selectedGenre?.let { genre ->
+            loadMediaForGenre(genre.id, tab)
+        }
+    }
+
+    private fun loadMediaForGenre(genreId: Int, tab: Int) {
+        viewModelScope.launch {
+            val result = if (tab == 0) {
+                discoverByGenreUseCase.discoverMovies(genreId)
+            } else {
+                discoverByGenreUseCase.discoverTv(genreId)
+            }
+            result.onSuccess { media ->
+                _uiState.update { it.copy(isLoadingMedia = false, mediaList = media) }
+            }.onFailure { e ->
+                _uiState.update { it.copy(isLoadingMedia = false, error = e.message) }
+            }
+        }
+    }
+}
