@@ -134,6 +134,7 @@ private fun DetailContent(
                     onClick = onBack,
                     modifier = Modifier
                         .align(Alignment.TopStart)
+                        .statusBarsPadding()
                         .padding(8.dp)
                         .background(Color(0x80000000), CircleShape)
                 ) {

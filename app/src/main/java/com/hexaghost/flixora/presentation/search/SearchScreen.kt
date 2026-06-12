@@ -44,6 +44,7 @@ fun SearchScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(FlixoraDarkBg)
+            .statusBarsPadding()
     ) {
         // Top bar
         Box(

@@ -12,6 +12,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -80,7 +82,9 @@ fun FlixoraNavigation() {
         NavHost(
             navController = navController,
             startDestination = Screen.Splash.route,
-            modifier = Modifier.padding(innerPadding),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = innerPadding.calculateBottomPadding()),
             enterTransition = {
                 slideInHorizontally(
                     initialOffsetX = { 300 },
@@ -193,26 +197,23 @@ private fun FlixoraBottomBar(
     currentRoute: String?,
     onNavItemClick: (String) -> Unit
 ) {
-    Surface(
-        color = Color.Transparent,
-        tonalElevation = 0.dp
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 24.dp, vertical = 12.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            FlixoraDarkSurface.copy(alpha = 0.95f),
-                            FlixoraDarkSurface
-                        )
-                    )
-                )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = FlixoraDarkSurface.copy(alpha = 0.85f),
+            shape = RoundedCornerShape(28.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x1AFFFFFF)),
+            tonalElevation = 8.dp
         ) {
             NavigationBar(
                 containerColor = Color.Transparent,
-                contentColor = FlixoraWhite
+                contentColor = FlixoraWhite,
+                modifier = Modifier.height(72.dp)
             ) {
                 bottomNavItems.forEach { item ->
                     val isSelected = currentRoute == item.route
@@ -220,10 +221,18 @@ private fun FlixoraBottomBar(
                         icon = {
                             Icon(
                                 imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
-                                contentDescription = item.label
+                                contentDescription = item.label,
+                                modifier = Modifier.size(24.dp)
                             )
                         },
-                        label = { Text(item.label) },
+                        label = {
+                            Text(
+                                text = item.label,
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            )
+                        },
                         selected = isSelected,
                         onClick = { onNavItemClick(item.route) },
                         colors = NavigationBarItemDefaults.colors(
@@ -231,7 +240,7 @@ private fun FlixoraBottomBar(
                             selectedTextColor = FlixoraCyan,
                             unselectedIconColor = FlixoraWhite60,
                             unselectedTextColor = FlixoraWhite60,
-                            indicatorColor = FlixoraPurple.copy(alpha = 0.2f)
+                            indicatorColor = FlixoraCyan.copy(alpha = 0.15f)
                         )
                     )
                 }

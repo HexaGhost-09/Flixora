@@ -29,6 +29,7 @@ fun WatchlistScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(FlixoraDarkBg)
+            .statusBarsPadding()
     ) {
         // Header
         Box(

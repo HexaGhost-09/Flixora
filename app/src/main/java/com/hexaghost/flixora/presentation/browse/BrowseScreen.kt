@@ -32,6 +32,7 @@ fun BrowseScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(FlixoraDarkBg)
+            .statusBarsPadding()
     ) {
         // Header
         Box(
