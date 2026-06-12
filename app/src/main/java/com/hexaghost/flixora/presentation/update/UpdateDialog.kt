@@ -153,7 +153,7 @@ fun UpdateDialog(
                             context.startActivity(intent)
                             onDismiss()
                         },
-                        modifier = Modifier.weight(1.f),
+                        modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.Transparent
