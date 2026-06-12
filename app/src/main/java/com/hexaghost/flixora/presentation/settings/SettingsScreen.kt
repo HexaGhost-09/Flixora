@@ -157,6 +157,15 @@ fun SettingsScreen(
             }
         )
 
+        SettingsClickableRow(
+            icon = Icons.Filled.AccountCircle,
+            title = "Account Login",
+            value = "Not Logged In",
+            onClick = {
+                android.widget.Toast.makeText(context, "Login feature coming soon!", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        )
+
         Spacer(modifier = Modifier.height(16.dp))
 
         SettingsHeader(title = "Cache & Info")
