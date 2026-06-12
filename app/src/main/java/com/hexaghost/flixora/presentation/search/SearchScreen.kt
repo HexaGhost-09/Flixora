@@ -2,10 +2,12 @@ package com.hexaghost.flixora.presentation.search
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -19,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -26,6 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.hexaghost.flixora.presentation.browse.BrowseViewModel
 import com.hexaghost.flixora.ui.components.MediaCard
 import com.hexaghost.flixora.ui.components.MediaCardShimmer
 import com.hexaghost.flixora.ui.theme.*
@@ -34,9 +38,11 @@ import com.hexaghost.flixora.ui.theme.*
 @Composable
 fun SearchScreen(
     onMediaClick: (Int, String) -> Unit,
-    viewModel: SearchViewModel = hiltViewModel()
+    searchViewModel: SearchViewModel = hiltViewModel(),
+    browseViewModel: BrowseViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val searchUiState by searchViewModel.uiState.collectAsStateWithLifecycle()
+    val browseUiState by browseViewModel.uiState.collectAsStateWithLifecycle()
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
 
@@ -58,7 +64,7 @@ fun SearchScreen(
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
             Text(
-                text = "Search",
+                text = "Search & Explore",
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
                 color = FlixoraWhite
             )
@@ -66,8 +72,8 @@ fun SearchScreen(
 
         // Search field
         OutlinedTextField(
-            value = uiState.query,
-            onValueChange = viewModel::onQueryChange,
+            value = searchUiState.query,
+            onValueChange = searchViewModel::onQueryChange,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -77,8 +83,8 @@ fun SearchScreen(
                 Icon(Icons.Filled.Search, contentDescription = null, tint = FlixoraCyan)
             },
             trailingIcon = {
-                if (uiState.query.isNotBlank()) {
-                    IconButton(onClick = { viewModel.onQueryChange("") }) {
+                if (searchUiState.query.isNotBlank()) {
+                    IconButton(onClick = { searchViewModel.onQueryChange("") }) {
                         Icon(Icons.Filled.Clear, contentDescription = "Clear", tint = FlixoraWhite60)
                     }
                 }
@@ -105,61 +111,140 @@ fun SearchScreen(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            when {
-                uiState.isLoading -> {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxSize()
+            if (searchUiState.query.isBlank()) {
+                // Combined BROWSE UX (Categories / Discovered grid)
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Movie / TV Tab
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(9) { MediaCardShimmer() }
-                    }
-                }
-                !uiState.hasSearched -> {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(text = "🎬", style = MaterialTheme.typography.displayMedium)
-                        Text(
-                            text = "Search for movies & shows",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = FlixoraWhite60,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-                uiState.results.isEmpty() && uiState.hasSearched -> {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(text = "🔍", style = MaterialTheme.typography.displayMedium)
-                        Text(
-                            text = "No results for \"${uiState.query}\"",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = FlixoraWhite60,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-                else -> {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 80.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(items = uiState.results, key = { it.id }) { media ->
-                            MediaCard(
-                                media = media,
-                                onClick = { onMediaClick(media.id, media.mediaType) },
-                                width = 110.dp,
-                                height = 165.dp
+                        listOf("Movies", "TV Shows").forEachIndexed { index, label ->
+                            val isSelected = browseUiState.selectedTab == index
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { browseViewModel.selectTab(index) },
+                                label = {
+                                    Text(
+                                        text = label,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = FlixoraPurple,
+                                    selectedLabelColor = FlixoraWhite,
+                                    containerColor = FlixoraDarkCard,
+                                    labelColor = FlixoraWhite80
+                                )
                             )
+                        }
+                    }
+
+                    // Genre chips
+                    if (!browseUiState.isLoadingGenres) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            browseUiState.genres.forEach { genre ->
+                                val isSelected = browseUiState.selectedGenre?.id == genre.id
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { browseViewModel.selectGenre(genre) },
+                                    label = { Text(genre.name, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = FlixoraCyan.copy(alpha = 0.2f),
+                                        selectedLabelColor = FlixoraCyan,
+                                        containerColor = FlixoraDarkCard,
+                                        labelColor = FlixoraWhite60
+                                    ),
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Media Grid for the selected category/genre
+                    if (browseUiState.isLoadingMedia) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(12) { MediaCardShimmer() }
+                        }
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 80.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(items = browseUiState.mediaList, key = { it.id }) { media ->
+                                MediaCard(
+                                    media = media,
+                                    onClick = { onMediaClick(media.id, media.mediaType) },
+                                    width = 110.dp,
+                                    height = 165.dp
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                // SEARCH RESULTS UX
+                when {
+                    searchUiState.isLoading -> {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(9) { MediaCardShimmer() }
+                        }
+                    }
+                    searchUiState.results.isEmpty() && searchUiState.hasSearched -> {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(text = "🔍", style = MaterialTheme.typography.displayMedium)
+                            Text(
+                                text = "No results for \"${searchUiState.query}\"",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = FlixoraWhite60,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                    else -> {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 80.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(items = searchUiState.results, key = { it.id }) { media ->
+                                MediaCard(
+                                    media = media,
+                                    onClick = { onMediaClick(media.id, media.mediaType) },
+                                    width = 110.dp,
+                                    height = 165.dp
+                                )
+                            }
                         }
                     }
                 }

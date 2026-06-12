@@ -24,7 +24,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.hexaghost.flixora.presentation.browse.BrowseScreen
+import com.hexaghost.flixora.presentation.settings.SettingsScreen
 import com.hexaghost.flixora.presentation.detail.DetailScreen
 import com.hexaghost.flixora.presentation.home.HomeScreen
 import com.hexaghost.flixora.presentation.player.PlayerScreen
@@ -42,9 +42,9 @@ data class BottomNavItem(
 
 val bottomNavItems = listOf(
     BottomNavItem("Home", Screen.Home.route, Icons.Filled.Home, Icons.Outlined.Home),
-    BottomNavItem("Browse", Screen.Browse.route, Icons.Filled.Explore, Icons.Outlined.Explore),
-    BottomNavItem("Search", Screen.Search.route, Icons.Filled.Search, Icons.Outlined.Search),
-    BottomNavItem("Watchlist", Screen.Watchlist.route, Icons.Filled.Bookmark, Icons.Outlined.BookmarkBorder)
+    BottomNavItem("Explore", Screen.Search.route, Icons.Filled.Explore, Icons.Outlined.Explore),
+    BottomNavItem("Watchlist", Screen.Watchlist.route, Icons.Filled.Bookmark, Icons.Outlined.BookmarkBorder),
+    BottomNavItem("Settings", Screen.Settings.route, Icons.Filled.Settings, Icons.Outlined.Settings)
 )
 
 @Composable
@@ -125,16 +125,8 @@ fun FlixoraNavigation() {
                     onMediaClick = { id, type ->
                         navController.navigate(Screen.Detail.createRoute(id, type))
                     },
-                    onSeeAllMovies = { navController.navigate(Screen.Browse.route) },
-                    onSeeAllTv = { navController.navigate(Screen.Browse.route) }
-                )
-            }
-
-            composable(Screen.Browse.route) {
-                BrowseScreen(
-                    onMediaClick = { id, type ->
-                        navController.navigate(Screen.Detail.createRoute(id, type))
-                    }
+                    onSeeAllMovies = { navController.navigate(Screen.Search.route) },
+                    onSeeAllTv = { navController.navigate(Screen.Search.route) }
                 )
             }
 
@@ -152,6 +144,10 @@ fun FlixoraNavigation() {
                         navController.navigate(Screen.Detail.createRoute(id, type))
                     }
                 )
+            }
+
+            composable(Screen.Settings.route) {
+                SettingsScreen()
             }
 
             composable(
