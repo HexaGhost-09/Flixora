@@ -63,6 +63,28 @@ jobs:
           ./gradlew assembleDebug
           ./gradlew assembleRelease
 
+      - name: Sign Release APK
+        run: |
+          # Find latest apksigner in Android SDK
+          APKSIGNER=$(find $ANDROID_HOME/build-tools -name apksigner | sort -r | head -n 1)
+          echo "Using apksigner at: $APKSIGNER"
+          
+          if [ -n "${{ secrets.SIGNING_KEY }}" ]; then
+            echo "Using custom signing key from secrets..."
+            echo "${{ secrets.SIGNING_KEY }}" | base64 -d > release.keystore
+            ALIAS="${{ secrets.ALIAS }}"
+            STORE_PASS="${{ secrets.KEY_STORE_PASSWORD }}"
+            KEY_PASS="${{ secrets.KEY_PASSWORD }}"
+          else
+            echo "No signing key secret found. Generating a temporary self-signed key..."
+            keytool -genkeypair -v -keystore release.keystore -alias temp-alias -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Flixora, OU=HexaGhost, O=Flixora, L=City, S=State, C=US" -storepass temppass -keypass temppass
+            ALIAS="temp-alias"
+            STORE_PASS="temppass"
+            KEY_PASS="temppass"
+          fi
+          
+          $APKSIGNER sign --ks release.keystore --ks-key-alias "$ALIAS" --ks-pass pass:"$STORE_PASS" --key-pass pass:"$KEY_PASS" --out app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/app-release-unsigned.apk
+
       - name: Create GitHub Release
         if: steps.check_version.outputs.version_changed == 'true'
         uses: softprops/action-gh-release@v2
@@ -73,5 +95,5 @@ jobs:
           prerelease: false
           files: |
             app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/release/app-release-unsigned.apk
+            app/build/outputs/apk/release/app-release.apk
           generate_release_notes: true
