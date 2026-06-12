@@ -1,4 +1,4 @@
-﻿package com.hexaghost.flixora.ui.components
+package com.hexaghost.flixora.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -41,71 +41,71 @@ fun MediaCard(
         label = "card_scale"
     )
 
-    Box(
+    Column(
         modifier = modifier
             .width(width)
-            .height(height)
             .scale(scale)
-            .clip(RoundedCornerShape(12.dp))
             .clickable {
                 isPressed = true
                 onClick()
             }
     ) {
-        // Poster image
-        AsyncImage(
-            model = media.posterPath,
-            contentDescription = media.title,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-
-        // Gradient overlay
+        // Poster Box (Image container)
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.Transparent,
-                            Color(0xCC000000)
-                        )
-                    )
-                )
-        )
+                .width(width)
+                .height(height)
+                .clip(RoundedCornerShape(12.dp))
+        ) {
+            // Poster image
+            AsyncImage(
+                model = media.posterPath,
+                contentDescription = media.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
 
-        // Placeholder when no image
-        if (media.posterPath == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(FlixoraDeepPurple, FlixoraDarkCard)
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = media.title.take(1),
-                    style = MaterialTheme.typography.displaySmall,
-                    color = FlixoraCyan
-                )
+            // Placeholder when no image
+            if (media.posterPath == null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(FlixoraDeepPurple, FlixoraDarkCard)
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = media.title.take(1),
+                        style = MaterialTheme.typography.displaySmall,
+                        color = FlixoraCyan
+                    )
+                }
             }
         }
 
-        // Rating badge
-        if (showRating && media.voteAverage > 0) {
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(6.dp),
-                color = Color(0xCC000000),
-                shape = RoundedCornerShape(6.dp)
-            ) {
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Title and Rating row below the poster
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = media.title,
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                color = FlixoraWhite,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+
+            if (showRating && media.voteAverage > 0) {
+                Spacer(modifier = Modifier.width(4.dp))
                 Row(
-                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
@@ -117,25 +117,13 @@ fun MediaCard(
                     )
                     Text(
                         text = String.format("%.1f", media.voteAverage),
-                        color = FlixoraWhite,
+                        color = FlixoraCyan,
                         fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
         }
-
-        // Title at bottom
-        Text(
-            text = media.title,
-            style = MaterialTheme.typography.labelSmall,
-            color = FlixoraWhite,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(8.dp)
-        )
     }
 
     LaunchedEffect(isPressed) {
