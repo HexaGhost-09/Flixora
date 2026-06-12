@@ -30,16 +30,24 @@ class HomeViewModel @Inject constructor(
     private val getPopularTvUseCase: GetPopularTvUseCase
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(HomeUiState())
+    companion object {
+        private var cachedState: HomeUiState? = null
+    }
+
+    private val _uiState = MutableStateFlow(cachedState ?: HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
-        loadContent()
+        if (cachedState == null) {
+            loadContent()
+        }
     }
 
     fun loadContent() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            // Only show loading if we don't have cached data already
+            val isFirstLoad = _uiState.value.trending.isEmpty()
+            _uiState.update { it.copy(isLoading = isFirstLoad, error = null) }
             try {
                 val trendingDeferred = async { getTrendingUseCase() }
                 val moviesDeferred = async { getPopularMoviesUseCase() }
@@ -49,14 +57,15 @@ class HomeViewModel @Inject constructor(
                 val movies = moviesDeferred.await().getOrDefault(emptyList())
                 val tv = tvDeferred.await().getOrDefault(emptyList())
 
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        trending = trending,
-                        popularMovies = movies,
-                        popularTvShows = tv
-                    )
-                }
+                val newState = HomeUiState(
+                    isLoading = false,
+                    trending = trending,
+                    popularMovies = movies,
+                    popularTvShows = tv,
+                    error = null
+                )
+                _uiState.value = newState
+                cachedState = newState
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(isLoading = false, error = e.message ?: "Failed to load content")
