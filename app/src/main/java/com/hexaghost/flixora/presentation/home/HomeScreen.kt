@@ -18,6 +18,7 @@ import com.hexaghost.flixora.ui.theme.FlixoraDarkBg
 import com.hexaghost.flixora.ui.theme.FlixoraDarkSurface
 import com.hexaghost.flixora.ui.theme.FlixoraCyan
 import androidx.compose.material3.pulltorefresh.*
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,6 +29,21 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val pullToRefreshState = rememberPullToRefreshState()
+
+    if (pullToRefreshState.isRefreshing) {
+        LaunchedEffect(true) {
+            viewModel.loadContent()
+        }
+    }
+
+    LaunchedEffect(uiState.isLoading) {
+        if (uiState.isLoading) {
+            pullToRefreshState.startRefresh()
+        } else {
+            pullToRefreshState.endRefresh()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -41,14 +57,10 @@ fun HomeScreen(
                 onRetry = viewModel::loadContent
             )
             else -> {
-                PullToRefreshBox(
-                    isRefreshing = uiState.isLoading,
-                    onRefresh = { viewModel.loadContent() },
-                    modifier = Modifier.fillMaxSize(),
-                    colors = PullToRefreshDefaults.colors(
-                        containerColor = FlixoraDarkSurface,
-                        color = FlixoraCyan
-                    )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(pullToRefreshState.nestedScrollConnection)
                 ) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -140,6 +152,13 @@ fun HomeScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                         }
                     }
+
+                    PullToRefreshContainer(
+                        state = pullToRefreshState,
+                        modifier = Modifier.align(Alignment.TopCenter),
+                        containerColor = FlixoraDarkSurface,
+                        contentColor = FlixoraCyan
+                    )
                 }
             }
         }
