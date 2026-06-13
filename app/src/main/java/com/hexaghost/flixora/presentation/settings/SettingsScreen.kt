@@ -24,14 +24,22 @@ import com.hexaghost.flixora.BuildConfig
 import com.hexaghost.flixora.ui.theme.*
 import com.hexaghost.flixora.domain.update.UpdateManager
 import com.hexaghost.flixora.domain.update.UpdateState
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.hexaghost.flixora.presentation.auth.AuthViewModel
+import com.hexaghost.flixora.presentation.auth.AuthDialog
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
     updateManager: UpdateManager,
+    authViewModel: AuthViewModel = hiltViewModel(),
     modifier: Modifier = Modifier
 ) {
+    val authUiState by authViewModel.uiState.collectAsState()
+    val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
+    var showAuthDialog by remember { mutableStateOf(false) }
+
     var wifiOnlyDownload by remember { mutableStateOf(true) }
     var highQualityStreaming by remember { mutableStateOf(true) }
     var selectedLanguage by remember { mutableStateOf("English") }
@@ -41,6 +49,13 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var isCheckingUpdates by remember { mutableStateOf(false) }
+
+    if (showAuthDialog) {
+        AuthDialog(
+            onDismiss = { showAuthDialog = false },
+            viewModel = authViewModel
+        )
+    }
 
     Column(
         modifier = modifier
@@ -71,7 +86,8 @@ fun SettingsScreen(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp),
+                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .clickable { if (!isLoggedIn) showAuthDialog = true },
             colors = CardDefaults.cardColors(containerColor = FlixoraDarkSurface),
             shape = RoundedCornerShape(16.dp),
             border = BorderStroke(1.dp, Color(0x1AFFFFFF))
@@ -89,7 +105,7 @@ fun SettingsScreen(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = "H",
+                            text = if (isLoggedIn) (authUiState.user?.name?.take(1)?.uppercase() ?: "U") else "?",
                             style = MaterialTheme.typography.headlineMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = FlixoraCyan
@@ -100,22 +116,24 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "HexaGhost User",
+                        text = if (isLoggedIn) (authUiState.user?.name ?: "User") else "Guest User",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = FlixoraWhite
                     )
                     Text(
-                        text = "Premium Member",
+                        text = if (isLoggedIn) (authUiState.user?.email ?: "") else "Tap to log in & sync data",
                         style = MaterialTheme.typography.bodySmall,
                         color = FlixoraCyan,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = FlixoraWhite60
-                )
+                if (!isLoggedIn) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = FlixoraWhite60
+                    )
+                }
             }
         }
 
@@ -159,10 +177,15 @@ fun SettingsScreen(
 
         SettingsClickableRow(
             icon = Icons.Filled.AccountCircle,
-            title = "Account Login",
-            value = "Not Logged In",
+            title = if (isLoggedIn) "Account Logout" else "Account Login",
+            value = if (isLoggedIn) (authUiState.user?.name ?: "Logged In") else "Not Logged In",
             onClick = {
-                android.widget.Toast.makeText(context, "Login feature coming soon!", android.widget.Toast.LENGTH_SHORT).show()
+                if (isLoggedIn) {
+                    authViewModel.signOut()
+                    android.widget.Toast.makeText(context, "Logged out successfully", android.widget.Toast.LENGTH_SHORT).show()
+                } else {
+                    showAuthDialog = true
+                }
             }
         )
 
