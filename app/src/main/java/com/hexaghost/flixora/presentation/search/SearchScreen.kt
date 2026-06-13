@@ -33,6 +33,8 @@ import com.hexaghost.flixora.presentation.browse.BrowseViewModel
 import com.hexaghost.flixora.ui.components.MediaCard
 import com.hexaghost.flixora.ui.components.MediaCardShimmer
 import com.hexaghost.flixora.ui.theme.*
+import androidx.compose.material3.pulltorefresh.*
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +47,20 @@ fun SearchScreen(
     val browseUiState by browseViewModel.uiState.collectAsStateWithLifecycle()
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
+
+    val pullToRefreshState = rememberPullToRefreshState()
+
+    if (pullToRefreshState.isRefreshing) {
+        LaunchedEffect(true) {
+            browseViewModel.refreshData()
+        }
+    }
+
+    LaunchedEffect(browseUiState.isLoadingGenres, browseUiState.isLoadingMedia) {
+        if (!browseUiState.isLoadingGenres && !browseUiState.isLoadingMedia) {
+            pullToRefreshState.endRefresh()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -113,93 +129,107 @@ fun SearchScreen(
         ) {
             if (searchUiState.query.isBlank()) {
                 // Combined BROWSE UX (Categories / Discovered grid)
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // Movie / TV Tab
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf("Movies", "TV Shows").forEachIndexed { index, label ->
-                            val isSelected = browseUiState.selectedTab == index
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = { browseViewModel.selectTab(index) },
-                                label = {
-                                    Text(
-                                        text = label,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                    )
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = FlixoraPurple,
-                                    selectedLabelColor = FlixoraWhite,
-                                    containerColor = FlixoraDarkCard,
-                                    labelColor = FlixoraWhite80
-                                )
-                            )
-                        }
-                    }
-
-                    // Genre chips
-                    if (!browseUiState.isLoadingGenres) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(pullToRefreshState.nestedScrollConnection),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // Movie / TV Tab
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                                .padding(horizontal = 20.dp, vertical = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            browseUiState.genres.forEach { genre ->
-                                val isSelected = browseUiState.selectedGenre?.id == genre.id
+                            listOf("Movies", "TV Shows").forEachIndexed { index, label ->
+                                val isSelected = browseUiState.selectedTab == index
                                 FilterChip(
                                     selected = isSelected,
-                                    onClick = { browseViewModel.selectGenre(genre) },
-                                    label = { Text(genre.name, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal) },
+                                    onClick = { browseViewModel.selectTab(index) },
+                                    label = {
+                                        Text(
+                                            text = label,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = FlixoraCyan.copy(alpha = 0.2f),
-                                        selectedLabelColor = FlixoraCyan,
+                                        selectedContainerColor = FlixoraPurple,
+                                        selectedLabelColor = FlixoraWhite,
                                         containerColor = FlixoraDarkCard,
-                                        labelColor = FlixoraWhite60
-                                    ),
-                                    shape = RoundedCornerShape(20.dp)
+                                        labelColor = FlixoraWhite80
+                                    )
                                 )
+                            }
+                        }
+
+                        // Genre chips
+                        if (!browseUiState.isLoadingGenres) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState())
+                                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                browseUiState.genres.forEach { genre ->
+                                    val isSelected = browseUiState.selectedGenre?.id == genre.id
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = { browseViewModel.selectGenre(genre) },
+                                        label = { Text(genre.name, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = FlixoraCyan.copy(alpha = 0.2f),
+                                            selectedLabelColor = FlixoraCyan,
+                                            containerColor = FlixoraDarkCard,
+                                            labelColor = FlixoraWhite60
+                                        ),
+                                        shape = RoundedCornerShape(20.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Media Grid for the selected category/genre
+                        if (browseUiState.isLoadingMedia) {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(3),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(12) { MediaCardShimmer() }
+                            }
+                        } else {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(3),
+                                contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 80.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(items = browseUiState.mediaList, key = { it.id }) { media ->
+                                    MediaCard(
+                                        media = media,
+                                        onClick = { onMediaClick(media.id, media.mediaType) },
+                                        width = 110.dp,
+                                        height = 165.dp
+                                    )
+                                }
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Media Grid for the selected category/genre
-                    if (browseUiState.isLoadingMedia) {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(3),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(12) { MediaCardShimmer() }
-                        }
-                    } else {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(3),
-                            contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 80.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(items = browseUiState.mediaList, key = { it.id }) { media ->
-                                MediaCard(
-                                    media = media,
-                                    onClick = { onMediaClick(media.id, media.mediaType) },
-                                    width = 110.dp,
-                                    height = 165.dp
-                                )
-                            }
-                        }
-                    }
+                    PullToRefreshContainer(
+                        state = pullToRefreshState,
+                        modifier = Modifier.align(Alignment.TopCenter),
+                        containerColor = FlixoraDarkSurface,
+                        contentColor = FlixoraCyan
+                    )
                 }
             } else {
                 // SEARCH RESULTS UX
