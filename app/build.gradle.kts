@@ -15,8 +15,8 @@ android {
         applicationId = "com.hexaghost.flixora"
         minSdk = 26
         targetSdk = 35
-        versionCode = 14
-        versionName = "0.1.4"
+        versionCode = 15
+        versionName = "0.1.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -102,6 +102,8 @@ dependencies {
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
     implementation(libs.media3.session)
+    implementation(libs.media3.exoplayer.hls)
+    implementation(libs.media3.exoplayer.dash)
 
     // Paging
     implementation(libs.paging.runtime)
