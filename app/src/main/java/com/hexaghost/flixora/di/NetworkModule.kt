@@ -25,9 +25,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    @Provides
-    @Singleton
-    fun provideAuthInterceptor(): Interceptor = Interceptor { chain ->
+    private fun getAuthInterceptor(): Interceptor = Interceptor { chain ->
         val originalRequest = chain.request()
         val url = originalRequest.url.newBuilder()
             .addQueryParameter("api_key", BuildConfig.TMDB_API_KEY)
@@ -48,9 +46,7 @@ object NetworkModule {
                 HttpLoggingInterceptor.Level.NONE
         }
 
-    @Provides
-    @Singleton
-    fun provideCacheInterceptor(): Interceptor = Interceptor { chain ->
+    private fun getCacheInterceptor(): Interceptor = Interceptor { chain ->
         val response = chain.proceed(chain.request())
         if (response.isSuccessful) {
             response.newBuilder()
@@ -66,9 +62,7 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(
         @ApplicationContext context: Context,
-        authInterceptor: Interceptor,
-        loggingInterceptor: HttpLoggingInterceptor,
-        cacheInterceptor: Interceptor
+        loggingInterceptor: HttpLoggingInterceptor
     ): OkHttpClient {
         val cacheSize = 20 * 1024 * 1024L // 20 MB Cache
         val cacheDir = File(context.cacheDir, "http_cache")
@@ -76,8 +70,8 @@ object NetworkModule {
 
         return OkHttpClient.Builder()
             .cache(cache)
-            .addInterceptor(authInterceptor)
-            .addInterceptor(cacheInterceptor)
+            .addInterceptor(getAuthInterceptor())
+            .addInterceptor(getCacheInterceptor())
             .addInterceptor(loggingInterceptor)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
