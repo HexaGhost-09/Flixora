@@ -53,13 +53,6 @@ fun SearchScreen(
     if (pullToRefreshState.isRefreshing) {
         LaunchedEffect(true) {
             browseViewModel.refreshData()
-        }
-    }
-
-    LaunchedEffect(browseUiState.isRefreshing) {
-        if (browseUiState.isRefreshing) {
-            pullToRefreshState.startRefresh()
-        } else {
             pullToRefreshState.endRefresh()
         }
     }

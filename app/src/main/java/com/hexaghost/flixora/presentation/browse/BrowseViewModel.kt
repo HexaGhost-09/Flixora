@@ -92,44 +92,42 @@ class BrowseViewModel @Inject constructor(
         }
     }
 
-    fun refreshData() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshing = true, error = null) }
+    suspend fun refreshData() {
+        _uiState.update { it.copy(isRefreshing = true, error = null) }
+        cachedState = _uiState.value
+
+        val currentGenre = _uiState.value.selectedGenre
+        val currentTab = _uiState.value.selectedTab
+
+        getGenresUseCase.getAllGenres().onSuccess { genres ->
+            _uiState.update { it.copy(isLoadingGenres = false, genres = genres) }
+            
+            val genreToLoad = genres.find { it.id == currentGenre?.id } ?: genres.firstOrNull()
+            _uiState.update { it.copy(selectedGenre = genreToLoad) }
             cachedState = _uiState.value
 
-            val currentGenre = _uiState.value.selectedGenre
-            val currentTab = _uiState.value.selectedTab
-
-            getGenresUseCase.getAllGenres().onSuccess { genres ->
-                _uiState.update { it.copy(isLoadingGenres = false, genres = genres) }
-                
-                val genreToLoad = genres.find { it.id == currentGenre?.id } ?: genres.firstOrNull()
-                _uiState.update { it.copy(selectedGenre = genreToLoad) }
-                cachedState = _uiState.value
-
-                if (genreToLoad != null) {
-                    val result = if (currentTab == 0) {
-                        discoverByGenreUseCase.discoverMovies(genreToLoad.id)
-                    } else {
-                        discoverByGenreUseCase.discoverTv(genreToLoad.id)
-                    }
-                    result.onSuccess { media ->
-                        _uiState.update { it.copy(isRefreshing = false, isLoadingMedia = false, mediaList = media) }
-                        cachedState = _uiState.value
-                    }.onFailure { e ->
-                        _uiState.update { it.copy(isRefreshing = false, isLoadingMedia = false, error = e.message) }
-                        cachedState = _uiState.value
-                    }
+            if (genreToLoad != null) {
+                val result = if (currentTab == 0) {
+                    discoverByGenreUseCase.discoverMovies(genreToLoad.id)
                 } else {
-                    _uiState.update { it.copy(isRefreshing = false, isLoadingMedia = false) }
+                    discoverByGenreUseCase.discoverTv(genreToLoad.id)
+                }
+                result.onSuccess { media ->
+                    _uiState.update { it.copy(isRefreshing = false, isLoadingMedia = false, mediaList = media) }
+                    cachedState = _uiState.value
+                }.onFailure { e ->
+                    _uiState.update { it.copy(isRefreshing = false, isLoadingMedia = false, error = e.message) }
                     cachedState = _uiState.value
                 }
-            }.onFailure { e ->
-                _uiState.update {
-                    it.copy(isRefreshing = false, isLoadingGenres = false, isLoadingMedia = false, error = e.message)
-                }
+            } else {
+                _uiState.update { it.copy(isRefreshing = false, isLoadingMedia = false) }
                 cachedState = _uiState.value
             }
+        }.onFailure { e ->
+            _uiState.update {
+                it.copy(isRefreshing = false, isLoadingGenres = false, isLoadingMedia = false, error = e.message)
+            }
+            cachedState = _uiState.value
         }
     }
 }
