@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import com.hexaghost.flixora.data.local.PreferencesManager
 import com.hexaghost.flixora.domain.update.UpdateManager
 import com.hexaghost.flixora.navigation.FlixoraNavigation
 import com.hexaghost.flixora.ui.theme.FlixoraDarkBg
@@ -22,6 +23,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var updateManager: UpdateManager
 
+    @Inject
+    lateinit var preferencesManager: PreferencesManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -34,7 +38,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             FlixoraTheme {
-                FlixoraNavigation(updateManager = updateManager)
+                FlixoraNavigation(
+                    updateManager = updateManager,
+                    preferencesManager = preferencesManager
+                )
             }
         }
     }

@@ -29,10 +29,12 @@ import com.hexaghost.flixora.presentation.auth.AuthViewModel
 import com.hexaghost.flixora.presentation.auth.AuthDialog
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
+import com.hexaghost.flixora.data.local.PreferencesManager
 
 @Composable
 fun SettingsScreen(
     updateManager: UpdateManager,
+    preferencesManager: PreferencesManager,
     authViewModel: AuthViewModel = hiltViewModel(),
     modifier: Modifier = Modifier
 ) {
@@ -40,10 +42,12 @@ fun SettingsScreen(
     val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
     var showAuthDialog by remember { mutableStateOf(false) }
 
-    var wifiOnlyDownload by remember { mutableStateOf(true) }
-    var highQualityStreaming by remember { mutableStateOf(true) }
-    var selectedLanguage by remember { mutableStateOf("English") }
+    var wifiOnlyDownload by remember { mutableStateOf(preferencesManager.wifiOnlyDownload) }
+    var highQualityStreaming by remember { mutableStateOf(preferencesManager.highQualityStreaming) }
+    var selectedLanguage by remember { mutableStateOf(preferencesManager.selectedLanguage) }
     var autoCheckUpdates by remember { mutableStateOf(updateManager.isAutoCheckEnabled) }
+    var autoplayTrailers by remember { mutableStateOf(preferencesManager.autoplayTrailers) }
+    var showPlayerControls by remember { mutableStateOf(preferencesManager.showPlayerControls) }
     
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
@@ -146,14 +150,20 @@ fun SettingsScreen(
             title = "Download over Wi-Fi only",
             description = "Saves mobile data usage",
             checked = wifiOnlyDownload,
-            onCheckedChange = { wifiOnlyDownload = it }
+            onCheckedChange = {
+                wifiOnlyDownload = it
+                preferencesManager.wifiOnlyDownload = it
+            }
         )
         SettingsToggleRow(
             icon = Icons.Filled.HighQuality,
             title = "High Quality Streaming",
             description = "Stream in HD quality where available",
             checked = highQualityStreaming,
-            onCheckedChange = { highQualityStreaming = it }
+            onCheckedChange = {
+                highQualityStreaming = it
+                preferencesManager.highQualityStreaming = it
+            }
         )
         SettingsToggleRow(
             icon = Icons.Filled.SystemUpdate,
@@ -171,7 +181,9 @@ fun SettingsScreen(
             title = "App Language",
             value = selectedLanguage,
             onClick = {
-                selectedLanguage = if (selectedLanguage == "English") "Spanish" else "English"
+                val nextLanguage = if (selectedLanguage == "English") "Spanish" else "English"
+                selectedLanguage = nextLanguage
+                preferencesManager.selectedLanguage = nextLanguage
             }
         )
 
@@ -186,6 +198,30 @@ fun SettingsScreen(
                 } else {
                     showAuthDialog = true
                 }
+            }
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        SettingsHeader(title = "Trailer Settings")
+        SettingsToggleRow(
+            icon = Icons.Filled.PlayCircle,
+            title = "Autoplay Trailers",
+            description = "Automatically start trailer videos",
+            checked = autoplayTrailers,
+            onCheckedChange = {
+                autoplayTrailers = it
+                preferencesManager.autoplayTrailers = it
+            }
+        )
+        SettingsToggleRow(
+            icon = Icons.Filled.Tune,
+            title = "Show Player Controls",
+            description = "Show seekbar and volume controls in the player",
+            checked = showPlayerControls,
+            onCheckedChange = {
+                showPlayerControls = it
+                preferencesManager.showPlayerControls = it
             }
         )
 

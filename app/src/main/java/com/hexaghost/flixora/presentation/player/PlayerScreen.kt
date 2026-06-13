@@ -22,9 +22,13 @@ import com.hexaghost.flixora.ui.theme.FlixoraWhite
 @Composable
 fun PlayerScreen(
     trailerKey: String,
+    autoplay: Boolean,
+    showControls: Boolean,
     onBack: () -> Unit
 ) {
-    val youtubeUrl = "https://www.youtube.com/embed/$trailerKey?autoplay=1&rel=0&showinfo=0"
+    val autoplayParam = if (autoplay) "1" else "0"
+    val controlsParam = if (showControls) "1" else "0"
+    val youtubeUrl = "https://www.youtube.com/embed/$trailerKey?autoplay=$autoplayParam&controls=$controlsParam&rel=0&showinfo=0"
 
     Box(
         modifier = Modifier

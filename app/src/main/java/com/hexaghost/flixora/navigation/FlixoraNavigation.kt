@@ -24,6 +24,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.hexaghost.flixora.data.local.PreferencesManager
 import com.hexaghost.flixora.presentation.settings.SettingsScreen
 import com.hexaghost.flixora.presentation.detail.DetailScreen
 import com.hexaghost.flixora.presentation.home.HomeScreen
@@ -52,7 +53,8 @@ val bottomNavItems = listOf(
 
 @Composable
 fun FlixoraNavigation(
-    updateManager: UpdateManager
+    updateManager: UpdateManager,
+    preferencesManager: PreferencesManager
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -146,7 +148,10 @@ fun FlixoraNavigation(
             }
 
             composable(Screen.Settings.route) {
-                SettingsScreen(updateManager = updateManager)
+                SettingsScreen(
+                    updateManager = updateManager,
+                    preferencesManager = preferencesManager
+                )
             }
 
             composable(
@@ -180,6 +185,8 @@ fun FlixoraNavigation(
                 val trailerKey = backStackEntry.arguments?.getString("trailerKey") ?: return@composable
                 PlayerScreen(
                     trailerKey = trailerKey,
+                    autoplay = preferencesManager.autoplayTrailers,
+                    showControls = preferencesManager.showPlayerControls,
                     onBack = { navController.popBackStack() }
                 )
             }
