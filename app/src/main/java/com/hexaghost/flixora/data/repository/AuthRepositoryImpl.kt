@@ -73,17 +73,25 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    private fun parseErrorMessage(errorBody: String?): String {
+        if (errorBody.isNullOrBlank()) return "An unknown error occurred"
+        return try {
+            val json = org.json.JSONObject(errorBody)
+            json.optString("message", json.optString("error", "An error occurred"))
+        } catch (e: Exception) {
+            errorBody
+        }
+    }
+
     override suspend fun signUp(email: String, password: String, name: String): Result<User> {
         return try {
             val response = apiService.signUp(SignUpRequest(email, password, name))
             if (response.isSuccessful) {
-                // Better Auth sign-up endpoint automatically logs user in and sets session cookie in headers.
-                // We'll verify session or construct user from response.
                 val user = response.body()?.user ?: User("id_temp_${System.currentTimeMillis()}", email, name)
                 saveUser(user)
                 Result.success(user)
             } else {
-                Result.failure(Exception(response.errorBody()?.string() ?: "Sign Up failed"))
+                Result.failure(Exception(parseErrorMessage(response.errorBody()?.string())))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -98,7 +106,7 @@ class AuthRepositoryImpl @Inject constructor(
                 saveUser(user)
                 Result.success(user)
             } else {
-                Result.failure(Exception(response.errorBody()?.string() ?: "Sign In failed"))
+                Result.failure(Exception(parseErrorMessage(response.errorBody()?.string())))
             }
         } catch (e: Exception) {
             Result.failure(e)

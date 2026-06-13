@@ -14,6 +14,16 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+
+sealed class AuthUiEvent {
+    object SignUpSuccess : AuthUiEvent()
+    object SignInSuccess : AuthUiEvent()
+    class Error(val message: String) : AuthUiEvent()
+}
+
 data class AuthUiState(
     val user: User? = null,
     val isLoading: Boolean = false,
@@ -27,6 +37,9 @@ class AuthViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
+
+    private val _eventFlow = MutableSharedFlow<AuthUiEvent>()
+    val eventFlow: SharedFlow<AuthUiEvent> = _eventFlow.asSharedFlow()
 
     val isLoggedIn: StateFlow<Boolean> = authRepository.isLoggedIn
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
@@ -55,9 +68,12 @@ class AuthViewModel @Inject constructor(
             authRepository.signUp(email, password, name)
                 .onSuccess { user ->
                     _uiState.update { it.copy(user = user, isLoading = false) }
+                    _eventFlow.emit(AuthUiEvent.SignUpSuccess)
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, error = e.message ?: "Sign Up failed") }
+                    val errorMsg = e.message ?: "Sign Up failed"
+                    _uiState.update { it.copy(isLoading = false, error = errorMsg) }
+                    _eventFlow.emit(AuthUiEvent.Error(errorMsg))
                 }
         }
     }
@@ -68,9 +84,12 @@ class AuthViewModel @Inject constructor(
             authRepository.signIn(email, password)
                 .onSuccess { user ->
                     _uiState.update { it.copy(user = user, isLoading = false) }
+                    _eventFlow.emit(AuthUiEvent.SignInSuccess)
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, error = e.message ?: "Sign In failed") }
+                    val errorMsg = e.message ?: "Sign In failed"
+                    _uiState.update { it.copy(isLoading = false, error = errorMsg) }
+                    _eventFlow.emit(AuthUiEvent.Error(errorMsg))
                 }
         }
     }
@@ -83,7 +102,9 @@ class AuthViewModel @Inject constructor(
                     _uiState.update { it.copy(user = null, isLoading = false) }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, error = e.message ?: "Sign Out failed") }
+                    val errorMsg = e.message ?: "Sign Out failed"
+                    _uiState.update { it.copy(isLoading = false, error = errorMsg) }
+                    _eventFlow.emit(AuthUiEvent.Error(errorMsg))
                 }
         }
     }

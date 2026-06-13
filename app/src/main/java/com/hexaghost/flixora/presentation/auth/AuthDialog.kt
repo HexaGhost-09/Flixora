@@ -22,6 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.hexaghost.flixora.ui.theme.*
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
+import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -248,6 +251,23 @@ fun AuthDialog(
                             )
                         }
                     }
+                }
+            }
+        }
+    }
+
+    val context = LocalContext.current
+    LaunchedEffect(key1 = true) {
+        viewModel.eventFlow.collectLatest { event ->
+            when (event) {
+                is AuthUiEvent.SignUpSuccess -> {
+                    Toast.makeText(context, "Sign up successful! Welcome to Flixora", Toast.LENGTH_SHORT).show()
+                }
+                is AuthUiEvent.SignInSuccess -> {
+                    Toast.makeText(context, "Welcome back! Login successful", Toast.LENGTH_SHORT).show()
+                }
+                is AuthUiEvent.Error -> {
+                    Toast.makeText(context, "Authentication failed: ${event.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }
