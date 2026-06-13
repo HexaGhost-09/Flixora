@@ -34,15 +34,16 @@ import com.hexaghost.flixora.domain.model.MediaDetail
 import com.hexaghost.flixora.ui.components.MediaCard
 import com.hexaghost.flixora.ui.components.RatingBadge
 import com.hexaghost.flixora.ui.theme.*
+import com.hexaghost.flixora.data.local.PreferencesManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(
     mediaId: Int,
     mediaType: String,
+    preferencesManager: PreferencesManager,
     onBack: () -> Unit,
     onMediaClick: (Int, String) -> Unit,
-    onPlayTrailer: (String) -> Unit,
     viewModel: DetailViewModel = hiltViewModel()
 ) {
     LaunchedEffect(mediaId, mediaType) {
@@ -79,10 +80,11 @@ fun DetailScreen(
                 DetailContent(
                     detail = uiState.detail!!,
                     isInWatchlist = uiState.isInWatchlist,
+                    preferencesManager = preferencesManager,
                     onWatchlistToggle = viewModel::toggleWatchlist,
                     onBack = onBack,
                     onMediaClick = onMediaClick,
-                    onPlayTrailer = onPlayTrailer
+                    viewModel = viewModel
                 )
             }
         }
@@ -94,10 +96,11 @@ fun DetailScreen(
 private fun DetailContent(
     detail: MediaDetail,
     isInWatchlist: Boolean,
+    preferencesManager: PreferencesManager,
     onWatchlistToggle: () -> Unit,
     onBack: () -> Unit,
     onMediaClick: (Int, String) -> Unit,
-    onPlayTrailer: (String) -> Unit
+    viewModel: DetailViewModel
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -144,26 +147,6 @@ private fun DetailContent(
                         contentDescription = "Back",
                         tint = FlixoraWhite
                     )
-                }
-                // Play button overlay
-                if (detail.trailerKey != null) {
-                    IconButton(
-                        onClick = { onPlayTrailer(detail.trailerKey) },
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .size(64.dp)
-                            .background(
-                                Brush.radialGradient(listOf(FlixoraPurple, FlixoraDeepPurple)),
-                                CircleShape
-                            )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.PlayArrow,
-                            contentDescription = "Play Trailer",
-                            tint = FlixoraWhite,
-                            modifier = Modifier.size(36.dp)
-                        )
-                    }
                 }
             }
         }
@@ -222,19 +205,37 @@ private fun DetailContent(
                 Spacer(Modifier.height(12.dp))
 
                 // Action buttons
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    if (detail.trailerKey != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (preferencesManager.isTraktConnected) {
+                        val isScrobbling by viewModel.isScrobbling.collectAsStateWithLifecycle()
+                        val hasScrobbled by viewModel.hasScrobbled.collectAsStateWithLifecycle()
+
                         Button(
-                            onClick = { onPlayTrailer(detail.trailerKey) },
+                            onClick = { viewModel.scrobbleMedia(detail.title) },
+                            enabled = !isScrobbling && !hasScrobbled,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = FlixoraPurple
+                                containerColor = if (hasScrobbled) Color(0xFF4CAF50) else Color(0xFFED1C24)
                             ),
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.weight(1f).height(46.dp)
                         ) {
-                            Icon(Icons.Filled.PlayArrow, null, Modifier.size(20.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Watch Trailer", fontWeight = FontWeight.Bold)
+                            if (isScrobbling) {
+                                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
+                            } else {
+                                Icon(
+                                    imageVector = if (hasScrobbled) Icons.Filled.Check else Icons.Filled.Sync,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = if (hasScrobbled) "Scrobbled" else "Scrobble",
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                     val watchlistColor by animateColorAsState(
@@ -243,14 +244,20 @@ private fun DetailContent(
                     )
                     OutlinedButton(
                         onClick = onWatchlistToggle,
-                        modifier = Modifier.height(46.dp),
+                        modifier = Modifier.weight(1f).height(46.dp),
                         border = androidx.compose.foundation.BorderStroke(1.dp, if (isInWatchlist) FlixoraCyan else FlixoraWhite40),
                         shape = RoundedCornerShape(10.dp)
                     ) {
                         Icon(
                             imageVector = if (isInWatchlist) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
                             contentDescription = null,
-                            tint = if (isInWatchlist) FlixoraCyan else FlixoraWhite60
+                            tint = if (isInWatchlist) FlixoraWhite else FlixoraWhite80
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = if (isInWatchlist) "In Watchlist" else "Add Watchlist",
+                            fontWeight = FontWeight.Bold,
+                            color = if (isInWatchlist) FlixoraWhite else FlixoraWhite80
                         )
                     }
                 }

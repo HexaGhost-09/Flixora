@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -110,8 +113,6 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             val firebaseUser = firebaseAuth.currentUser
             if (firebaseUser != null) {
-                // Force token refresh to validate session is still alive
-                firebaseUser.reload().await()
                 val user = User(
                     id = firebaseUser.uid,
                     email = firebaseUser.email ?: "",
@@ -120,6 +121,27 @@ class AuthRepositoryImpl @Inject constructor(
                 )
                 _currentUser.value = user
                 _isLoggedIn.value = true
+
+                // Asynchronously reload Firebase user profile in background
+                // so we don't block the startup screen
+                @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
+                kotlinx.coroutines.GlobalScope.launch {
+                    try {
+                        firebaseUser.reload().await()
+                        val updatedUser = User(
+                            id = firebaseUser.uid,
+                            email = firebaseUser.email ?: "",
+                            name = firebaseUser.displayName ?: "User",
+                            image = firebaseUser.photoUrl?.toString()
+                        )
+                        _currentUser.value = updatedUser
+                    } catch (e: Exception) {
+                        if (e is com.google.firebase.auth.FirebaseAuthInvalidUserException) {
+                            signOut()
+                        }
+                    }
+                }
+
                 Result.success(user)
             } else {
                 _currentUser.value = null

@@ -30,6 +30,7 @@ import com.hexaghost.flixora.presentation.auth.AuthDialog
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import com.hexaghost.flixora.data.local.PreferencesManager
+import com.hexaghost.flixora.presentation.trakt.TraktDialog
 
 @Composable
 fun SettingsScreen(
@@ -46,8 +47,10 @@ fun SettingsScreen(
     var highQualityStreaming by remember { mutableStateOf(preferencesManager.highQualityStreaming) }
     var selectedLanguage by remember { mutableStateOf(preferencesManager.selectedLanguage) }
     var autoCheckUpdates by remember { mutableStateOf(updateManager.isAutoCheckEnabled) }
-    var autoplayTrailers by remember { mutableStateOf(preferencesManager.autoplayTrailers) }
-    var showPlayerControls by remember { mutableStateOf(preferencesManager.showPlayerControls) }
+    
+    var showTraktDialog by remember { mutableStateOf(false) }
+    var isTraktConnected by remember { mutableStateOf(preferencesManager.isTraktConnected) }
+    var traktUsername by remember { mutableStateOf(preferencesManager.traktUsername) }
     
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
@@ -58,6 +61,17 @@ fun SettingsScreen(
         AuthDialog(
             onDismiss = { showAuthDialog = false },
             viewModel = authViewModel
+        )
+    }
+
+    if (showTraktDialog) {
+        TraktDialog(
+            onDismiss = { showTraktDialog = false },
+            preferencesManager = preferencesManager,
+            onSuccess = {
+                isTraktConnected = preferencesManager.isTraktConnected
+                traktUsername = preferencesManager.traktUsername
+            }
         )
     }
 
@@ -203,25 +217,20 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        SettingsHeader(title = "Trailer Settings")
-        SettingsToggleRow(
-            icon = Icons.Filled.PlayCircle,
-            title = "Autoplay Trailers",
-            description = "Automatically start trailer videos",
-            checked = autoplayTrailers,
-            onCheckedChange = {
-                autoplayTrailers = it
-                preferencesManager.autoplayTrailers = it
-            }
-        )
-        SettingsToggleRow(
-            icon = Icons.Filled.Tune,
-            title = "Show Player Controls",
-            description = "Show seekbar and volume controls in the player",
-            checked = showPlayerControls,
-            onCheckedChange = {
-                showPlayerControls = it
-                preferencesManager.showPlayerControls = it
+        SettingsHeader(title = "Trakt Connection")
+        SettingsClickableRow(
+            icon = Icons.Filled.Sync,
+            title = if (isTraktConnected) "Connected as $traktUsername" else "Connect Trakt Account",
+            value = if (isTraktConnected) "Disconnect" else "Tap to connect",
+            onClick = {
+                if (isTraktConnected) {
+                    preferencesManager.disconnectTrakt()
+                    isTraktConnected = false
+                    traktUsername = ""
+                    android.widget.Toast.makeText(context, "Disconnected from Trakt", android.widget.Toast.LENGTH_SHORT).show()
+                } else {
+                    showTraktDialog = true
+                }
             }
         )
 
@@ -232,7 +241,10 @@ fun SettingsScreen(
             icon = Icons.Filled.DeleteSweep,
             title = "Clear Search History",
             value = "",
-            onClick = { /* Clear logic */ }
+            onClick = {
+                preferencesManager.clearSearchHistory()
+                android.widget.Toast.makeText(context, "Search history cleared", android.widget.Toast.LENGTH_SHORT).show()
+            }
         )
         SettingsClickableRow(
             icon = Icons.Filled.CloudDownload,

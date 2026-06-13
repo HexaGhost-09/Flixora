@@ -9,7 +9,4 @@ sealed class Screen(val route: String) {
     data object Detail : Screen("detail/{mediaId}/{mediaType}") {
         fun createRoute(mediaId: Int, mediaType: String) = "detail/$mediaId/$mediaType"
     }
-    data object Player : Screen("player/{trailerKey}") {
-        fun createRoute(trailerKey: String) = "player/$trailerKey"
-    }
 }

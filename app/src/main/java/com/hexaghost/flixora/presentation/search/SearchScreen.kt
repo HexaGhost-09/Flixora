@@ -1,7 +1,9 @@
 package com.hexaghost.flixora.presentation.search
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -131,6 +133,78 @@ fun SearchScreen(
                     contentAlignment = Alignment.TopCenter
                 ) {
                     Column(modifier = Modifier.fillMaxSize()) {
+                        // Search History Section
+                        if (searchUiState.searchHistory.isNotEmpty()) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 4.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Recent Searches",
+                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = FlixoraCyan
+                                    )
+                                    TextButton(onClick = { searchViewModel.clearAllHistory() }) {
+                                        Text(
+                                            text = "Clear All",
+                                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                            color = FlixoraWhite60
+                                        )
+                                    }
+                                }
+                                
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState())
+                                        .padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    searchUiState.searchHistory.forEach { historyQuery ->
+                                        Surface(
+                                            color = FlixoraDarkCard,
+                                            shape = RoundedCornerShape(18.dp),
+                                            border = BorderStroke(1.dp, Color(0x1AFFFFFF)),
+                                            modifier = Modifier.clickable {
+                                                searchViewModel.onQueryChange(historyQuery)
+                                            }
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                Text(
+                                                    text = historyQuery,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = FlixoraWhite80
+                                                )
+                                                IconButton(
+                                                    onClick = { searchViewModel.deleteHistoryItem(historyQuery) },
+                                                    modifier = Modifier.size(16.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Filled.Clear,
+                                                        contentDescription = "Remove",
+                                                        tint = FlixoraWhite40,
+                                                        modifier = Modifier.size(12.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+                        }
+
                         // Movie / TV Tab
                         Row(
                             modifier = Modifier

@@ -28,7 +28,7 @@ import com.hexaghost.flixora.data.local.PreferencesManager
 import com.hexaghost.flixora.presentation.settings.SettingsScreen
 import com.hexaghost.flixora.presentation.detail.DetailScreen
 import com.hexaghost.flixora.presentation.home.HomeScreen
-import com.hexaghost.flixora.presentation.player.PlayerScreen
+
 import com.hexaghost.flixora.presentation.search.SearchScreen
 import com.hexaghost.flixora.presentation.splash.SplashScreen
 import com.hexaghost.flixora.presentation.watchlist.WatchlistScreen
@@ -166,28 +166,11 @@ fun FlixoraNavigation(
                 DetailScreen(
                     mediaId = mediaId,
                     mediaType = mediaType,
+                    preferencesManager = preferencesManager,
                     onBack = { navController.popBackStack() },
                     onMediaClick = { id, type ->
                         navController.navigate(Screen.Detail.createRoute(id, type))
-                    },
-                    onPlayTrailer = { key ->
-                        navController.navigate(Screen.Player.createRoute(key))
                     }
-                )
-            }
-
-            composable(
-                route = Screen.Player.route,
-                arguments = listOf(
-                    navArgument("trailerKey") { type = NavType.StringType }
-                )
-            ) { backStackEntry ->
-                val trailerKey = backStackEntry.arguments?.getString("trailerKey") ?: return@composable
-                PlayerScreen(
-                    trailerKey = trailerKey,
-                    autoplay = preferencesManager.autoplayTrailers,
-                    showControls = preferencesManager.showPlayerControls,
-                    onBack = { navController.popBackStack() }
                 )
             }
         }
