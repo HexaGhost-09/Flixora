@@ -153,7 +153,7 @@ fun HomeScreen(
                         }
                     }
 
-                    if (pullToRefreshState.positionFraction > 0f || pullToRefreshState.isRefreshing) {
+                    if (pullToRefreshState.verticalOffset > 0f || pullToRefreshState.isRefreshing) {
                         PullToRefreshContainer(
                             state = pullToRefreshState,
                             modifier = Modifier.align(Alignment.TopCenter),
