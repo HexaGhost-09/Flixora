@@ -153,12 +153,14 @@ fun HomeScreen(
                         }
                     }
 
-                    PullToRefreshContainer(
-                        state = pullToRefreshState,
-                        modifier = Modifier.align(Alignment.TopCenter),
-                        containerColor = FlixoraDarkSurface,
-                        contentColor = FlixoraCyan
-                    )
+                    if (pullToRefreshState.positionFraction > 0f || pullToRefreshState.isRefreshing) {
+                        PullToRefreshContainer(
+                            state = pullToRefreshState,
+                            modifier = Modifier.align(Alignment.TopCenter),
+                            containerColor = FlixoraDarkSurface,
+                            contentColor = FlixoraCyan
+                        )
+                    }
                 }
             }
         }
