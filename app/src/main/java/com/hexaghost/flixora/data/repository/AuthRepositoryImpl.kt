@@ -1,57 +1,24 @@
 package com.hexaghost.flixora.data.repository
 
-import android.content.Context
-import com.hexaghost.flixora.data.api.AuthApiService
-import com.hexaghost.flixora.data.api.SignInRequest
-import com.hexaghost.flixora.data.api.SignUpRequest
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
+import com.google.firebase.auth.UserProfileChangeRequest
 import com.hexaghost.flixora.data.api.User
 import com.hexaghost.flixora.domain.repository.AuthRepository
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import okhttp3.Interceptor
-import okhttp3.Response
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class NeonAuthInterceptor @Inject constructor(
-    @ApplicationContext private val context: Context
-) : Interceptor {
-    private val prefs = context.getSharedPreferences("flixora_auth_prefs", Context.MODE_PRIVATE)
-
-    override fun intercept(chain: Interceptor.Chain): Response {
-        val originalRequest = chain.request()
-        val requestBuilder = originalRequest.newBuilder()
-
-        // Read all stored cookies
-        val cookies = prefs.getStringSet("cookies", emptySet()) ?: emptySet()
-        for (cookie in cookies) {
-            requestBuilder.addHeader("Cookie", cookie)
-        }
-
-        val response = chain.proceed(requestBuilder.build())
-
-        // Save Set-Cookie headers
-        val headers = response.headers("Set-Cookie")
-        if (headers.isNotEmpty()) {
-            val newCookies = HashSet(cookies)
-            newCookies.addAll(headers)
-            prefs.edit().putStringSet("cookies", newCookies).apply()
-        }
-
-        return response
-    }
-}
-
-@Singleton
 class AuthRepositoryImpl @Inject constructor(
-    private val apiService: AuthApiService,
-    @ApplicationContext private val context: Context
+    private val firebaseAuth: FirebaseAuth
 ) : AuthRepository {
-
-    private val prefs = context.getSharedPreferences("flixora_auth_prefs", Context.MODE_PRIVATE)
 
     private val _currentUser = MutableStateFlow<User?>(null)
     override val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
@@ -60,102 +27,109 @@ class AuthRepositoryImpl @Inject constructor(
     override val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
     init {
-        // Load cached user details if available
-        val userId = prefs.getString("user_id", null)
-        val userEmail = prefs.getString("user_email", null)
-        val userName = prefs.getString("user_name", null)
-        val userImage = prefs.getString("user_image", null)
-
-        if (userId != null && userEmail != null && userName != null) {
-            val user = User(userId, userEmail, userName, userImage)
+        // Restore session from Firebase persistent storage
+        val firebaseUser = firebaseAuth.currentUser
+        if (firebaseUser != null) {
+            val user = User(
+                id = firebaseUser.uid,
+                email = firebaseUser.email ?: "",
+                name = firebaseUser.displayName ?: "User",
+                image = firebaseUser.photoUrl?.toString()
+            )
             _currentUser.value = user
             _isLoggedIn.value = true
         }
     }
 
-    private fun parseErrorMessage(errorBody: String?): String {
-        if (errorBody.isNullOrBlank()) return "An unknown error occurred"
-        return try {
-            val json = org.json.JSONObject(errorBody)
-            json.optString("message", json.optString("error", "An error occurred"))
-        } catch (e: Exception) {
-            errorBody
-        }
-    }
-
     override suspend fun signUp(email: String, password: String, name: String): Result<User> {
         return try {
-            val response = apiService.signUp(SignUpRequest(email, password, name))
-            if (response.isSuccessful) {
-                val user = response.body()?.user ?: User("id_temp_${System.currentTimeMillis()}", email, name)
-                saveUser(user)
-                Result.success(user)
-            } else {
-                Result.failure(Exception(parseErrorMessage(response.errorBody()?.string())))
-            }
+            val result = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
+            val firebaseUser = result.user ?: return Result.failure(Exception("Sign up failed"))
+
+            // Set display name
+            val profileUpdates = UserProfileChangeRequest.Builder()
+                .setDisplayName(name)
+                .build()
+            firebaseUser.updateProfile(profileUpdates).await()
+
+            val user = User(
+                id = firebaseUser.uid,
+                email = firebaseUser.email ?: email,
+                name = name,
+                image = null
+            )
+            _currentUser.value = user
+            _isLoggedIn.value = true
+            Result.success(user)
+        } catch (e: FirebaseAuthWeakPasswordException) {
+            Result.failure(Exception("Password is too weak. Use at least 6 characters."))
+        } catch (e: FirebaseAuthUserCollisionException) {
+            Result.failure(Exception("An account with this email already exists."))
+        } catch (e: FirebaseAuthInvalidCredentialsException) {
+            Result.failure(Exception("Invalid email address format."))
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(Exception(e.message ?: "Sign up failed"))
         }
     }
 
     override suspend fun signIn(email: String, password: String): Result<User> {
         return try {
-            val response = apiService.signIn(SignInRequest(email, password))
-            if (response.isSuccessful) {
-                val user = response.body()?.user ?: User("id_temp_${System.currentTimeMillis()}", email, "Guest")
-                saveUser(user)
-                Result.success(user)
-            } else {
-                Result.failure(Exception(parseErrorMessage(response.errorBody()?.string())))
-            }
+            val result = firebaseAuth.signInWithEmailAndPassword(email, password).await()
+            val firebaseUser = result.user ?: return Result.failure(Exception("Sign in failed"))
+
+            val user = User(
+                id = firebaseUser.uid,
+                email = firebaseUser.email ?: email,
+                name = firebaseUser.displayName ?: "User",
+                image = firebaseUser.photoUrl?.toString()
+            )
+            _currentUser.value = user
+            _isLoggedIn.value = true
+            Result.success(user)
+        } catch (e: FirebaseAuthInvalidCredentialsException) {
+            Result.failure(Exception("Incorrect password. Please try again."))
+        } catch (e: FirebaseAuthInvalidUserException) {
+            Result.failure(Exception("No account found with this email."))
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(Exception(e.message ?: "Sign in failed"))
         }
     }
 
     override suspend fun signOut(): Result<Unit> {
-        clearUser()
-        return Result.success(Unit)
+        return try {
+            firebaseAuth.signOut()
+            _currentUser.value = null
+            _isLoggedIn.value = false
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Sign out failed"))
+        }
     }
 
     override suspend fun checkSession(): Result<User> {
         return try {
-            val response = apiService.getSession()
-            if (response.isSuccessful && response.body() != null) {
-                val user = response.body()!!.user
-                saveUser(user)
+            val firebaseUser = firebaseAuth.currentUser
+            if (firebaseUser != null) {
+                // Force token refresh to validate session is still alive
+                firebaseUser.reload().await()
+                val user = User(
+                    id = firebaseUser.uid,
+                    email = firebaseUser.email ?: "",
+                    name = firebaseUser.displayName ?: "User",
+                    image = firebaseUser.photoUrl?.toString()
+                )
+                _currentUser.value = user
+                _isLoggedIn.value = true
                 Result.success(user)
             } else {
-                clearUser()
-                Result.failure(Exception("Session expired"))
+                _currentUser.value = null
+                _isLoggedIn.value = false
+                Result.failure(Exception("No active session"))
             }
         } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    private fun saveUser(user: User) {
-        _currentUser.value = user
-        _isLoggedIn.value = true
-        prefs.edit().apply {
-            putString("user_id", user.id)
-            putString("user_email", user.email)
-            putString("user_name", user.name)
-            putString("user_image", user.image)
-            apply()
-        }
-    }
-
-    private fun clearUser() {
-        _currentUser.value = null
-        _isLoggedIn.value = false
-        prefs.edit().apply {
-            remove("user_id")
-            remove("user_email")
-            remove("user_name")
-            remove("user_image")
-            remove("cookies")
-            apply()
+            _currentUser.value = null
+            _isLoggedIn.value = false
+            Result.failure(Exception(e.message ?: "Session check failed"))
         }
     }
 }

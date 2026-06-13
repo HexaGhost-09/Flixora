@@ -1,7 +1,10 @@
 package com.hexaghost.flixora.di
 
+import com.google.firebase.auth.FirebaseAuth
 import com.hexaghost.flixora.BuildConfig
 import com.hexaghost.flixora.data.api.TmdbApiService
+import com.hexaghost.flixora.data.repository.AuthRepositoryImpl
+import com.hexaghost.flixora.domain.repository.AuthRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -87,31 +90,11 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideAuthApiService(
-        neonAuthInterceptor: com.hexaghost.flixora.data.repository.NeonAuthInterceptor,
-        loggingInterceptor: HttpLoggingInterceptor
-    ): com.hexaghost.flixora.data.api.AuthApiService {
-        val okHttpClient = OkHttpClient.Builder()
-            .addInterceptor(neonAuthInterceptor)
-            .addInterceptor(loggingInterceptor)
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .build()
-
-        return Retrofit.Builder()
-            .baseUrl("https://ep-soft-boat-aonbmon8.neonauth.c-2.ap-southeast-1.aws.neon.tech/neondb/auth/")
-            .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(com.hexaghost.flixora.data.api.AuthApiService::class.java)
-    }
+    fun provideFirebaseAuth(): FirebaseAuth = FirebaseAuth.getInstance()
 
     @Provides
     @Singleton
-    fun provideAuthRepository(
-        apiService: com.hexaghost.flixora.data.api.AuthApiService,
-        @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context
-    ): com.hexaghost.flixora.domain.repository.AuthRepository =
-        com.hexaghost.flixora.data.repository.AuthRepositoryImpl(apiService, context)
+    fun provideAuthRepository(firebaseAuth: FirebaseAuth): AuthRepository =
+        AuthRepositoryImpl(firebaseAuth)
 }
 

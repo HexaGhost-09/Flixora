@@ -71,7 +71,7 @@ fun AuthDialog(
                 )
 
                 Text(
-                    text = if (isSignUpMode) "Sign up with Neon Auth" else "Login using Neon Auth",
+                    text = if (isSignUpMode) "Sign up with Firebase Auth" else "Login using Firebase Auth",
                     style = MaterialTheme.typography.bodyMedium,
                     color = FlixoraWhite60,
                     modifier = Modifier.padding(bottom = 20.dp)
