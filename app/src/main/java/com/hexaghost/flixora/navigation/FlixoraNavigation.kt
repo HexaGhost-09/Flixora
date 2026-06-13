@@ -25,10 +25,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.hexaghost.flixora.data.local.PreferencesManager
+import com.hexaghost.flixora.domain.model.StreamResult
 import com.hexaghost.flixora.presentation.settings.SettingsScreen
 import com.hexaghost.flixora.presentation.detail.DetailScreen
 import com.hexaghost.flixora.presentation.home.HomeScreen
-
+import com.hexaghost.flixora.presentation.providers.ProvidersScreen
+import com.hexaghost.flixora.presentation.player.StreamPlayerScreen
 import com.hexaghost.flixora.presentation.search.SearchScreen
 import com.hexaghost.flixora.presentation.splash.SplashScreen
 import com.hexaghost.flixora.presentation.watchlist.WatchlistScreen
@@ -36,6 +38,9 @@ import com.hexaghost.flixora.presentation.update.UpdateDialog
 import com.hexaghost.flixora.domain.update.UpdateManager
 import com.hexaghost.flixora.domain.update.UpdateState
 import com.hexaghost.flixora.ui.theme.*
+import java.net.URLDecoder
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 data class BottomNavItem(
     val label: String,
@@ -48,6 +53,7 @@ val bottomNavItems = listOf(
     BottomNavItem("Home", Screen.Home.route, Icons.Filled.Home, Icons.Outlined.Home),
     BottomNavItem("Explore", Screen.Search.route, Icons.Filled.Explore, Icons.Outlined.Explore),
     BottomNavItem("Watchlist", Screen.Watchlist.route, Icons.Filled.Bookmark, Icons.Outlined.BookmarkBorder),
+    BottomNavItem("Providers", Screen.Providers.route, Icons.Filled.Extension, Icons.Outlined.Extension),
     BottomNavItem("Settings", Screen.Settings.route, Icons.Filled.Settings, Icons.Outlined.Settings)
 )
 
@@ -147,6 +153,10 @@ fun FlixoraNavigation(
                 )
             }
 
+            composable(Screen.Providers.route) {
+                ProvidersScreen()
+            }
+
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     updateManager = updateManager,
@@ -170,7 +180,48 @@ fun FlixoraNavigation(
                     onBack = { navController.popBackStack() },
                     onMediaClick = { id, type ->
                         navController.navigate(Screen.Detail.createRoute(id, type))
+                    },
+                    onPlayStream = { stream ->
+                        val encodedUrl = URLEncoder.encode(stream.url, StandardCharsets.UTF_8.toString())
+                        val encodedQuality = URLEncoder.encode(stream.quality, StandardCharsets.UTF_8.toString())
+                        val encodedProvider = URLEncoder.encode(stream.providerName, StandardCharsets.UTF_8.toString())
+                        val encodedTitle = URLEncoder.encode(
+                            navController.currentBackStackEntry?.arguments?.getString("mediaType") ?: "",
+                            StandardCharsets.UTF_8.toString()
+                        )
+                        navController.navigate(
+                            Screen.StreamPlayer.createRoute(encodedUrl, encodedQuality, encodedProvider, encodedTitle)
+                        )
                     }
+                )
+            }
+
+            composable(
+                route = Screen.StreamPlayer.route,
+                arguments = listOf(
+                    navArgument("encodedUrl") { type = NavType.StringType },
+                    navArgument("quality") { type = NavType.StringType },
+                    navArgument("providerName") { type = NavType.StringType },
+                    navArgument("title") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val encodedUrl = backStackEntry.arguments?.getString("encodedUrl") ?: return@composable
+                val quality = backStackEntry.arguments?.getString("quality") ?: "Auto"
+                val providerName = backStackEntry.arguments?.getString("providerName") ?: ""
+                val title = backStackEntry.arguments?.getString("title") ?: ""
+                val decodedUrl = URLDecoder.decode(encodedUrl, StandardCharsets.UTF_8.toString())
+                val decodedQuality = URLDecoder.decode(quality, StandardCharsets.UTF_8.toString())
+                val decodedProvider = URLDecoder.decode(providerName, StandardCharsets.UTF_8.toString())
+                val decodedTitle = URLDecoder.decode(title, StandardCharsets.UTF_8.toString())
+
+                StreamPlayerScreen(
+                    stream = StreamResult(
+                        url = decodedUrl,
+                        quality = decodedQuality,
+                        providerName = decodedProvider
+                    ),
+                    mediaTitle = decodedTitle,
+                    onBack = { navController.popBackStack() }
                 )
             }
         }
@@ -186,7 +237,7 @@ private fun FlixoraBottomBar(
         modifier = Modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -207,13 +258,13 @@ private fun FlixoraBottomBar(
                             Icon(
                                 imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
                                 contentDescription = item.label,
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(22.dp)
                             )
                         },
                         label = {
                             Text(
                                 text = item.label,
-                                style = MaterialTheme.typography.labelMedium.copy(
+                                style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                 )
                             )

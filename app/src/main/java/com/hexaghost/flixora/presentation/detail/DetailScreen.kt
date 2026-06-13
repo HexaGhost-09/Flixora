@@ -31,10 +31,12 @@ import com.hexaghost.flixora.domain.model.CastMember
 import com.hexaghost.flixora.domain.model.Genre
 import com.hexaghost.flixora.domain.model.Media
 import com.hexaghost.flixora.domain.model.MediaDetail
+import com.hexaghost.flixora.domain.model.StreamResult
 import com.hexaghost.flixora.ui.components.MediaCard
 import com.hexaghost.flixora.ui.components.RatingBadge
 import com.hexaghost.flixora.ui.theme.*
 import com.hexaghost.flixora.data.local.PreferencesManager
+import com.hexaghost.flixora.presentation.providers.StreamPickerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +46,7 @@ fun DetailScreen(
     preferencesManager: PreferencesManager,
     onBack: () -> Unit,
     onMediaClick: (Int, String) -> Unit,
+    onPlayStream: (StreamResult) -> Unit = {},
     viewModel: DetailViewModel = hiltViewModel()
 ) {
     LaunchedEffect(mediaId, mediaType) {
@@ -52,40 +55,68 @@ fun DetailScreen(
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(FlixoraDarkBg)
-    ) {
-        when {
-            uiState.isLoading -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = FlixoraCyan)
-                }
+    // Stream picker dialog
+    if (uiState.showStreamPicker) {
+        StreamPickerDialog(
+            streams = uiState.streamResults,
+            mediaTitle = uiState.detail?.title ?: "",
+            onDismiss = { viewModel.dismissStreamPicker() },
+            onSelect = { stream ->
+                viewModel.dismissStreamPicker()
+                onPlayStream(stream)
             }
-            uiState.error != null -> {
-                Column(
-                    Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text("😵 Error loading details", color = FlixoraWhite)
-                    Spacer(Modifier.height(12.dp))
-                    Button(onClick = { viewModel.loadDetail(mediaId, mediaType) }) {
-                        Text("Retry")
+        )
+    }
+
+    // Stream error snackbar
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(uiState.streamError) {
+        uiState.streamError?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearStreamError()
+        }
+    }
+
+    Scaffold(
+        containerColor = Color.Transparent,
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(FlixoraDarkBg)
+                .padding(padding)
+        ) {
+            when {
+                uiState.isLoading -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = FlixoraCyan)
                     }
                 }
-            }
-            uiState.detail != null -> {
-                DetailContent(
-                    detail = uiState.detail!!,
-                    isInWatchlist = uiState.isInWatchlist,
-                    preferencesManager = preferencesManager,
-                    onWatchlistToggle = viewModel::toggleWatchlist,
-                    onBack = onBack,
-                    onMediaClick = onMediaClick,
-                    viewModel = viewModel
-                )
+                uiState.error != null -> {
+                    Column(
+                        Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text("😵 Error loading details", color = FlixoraWhite)
+                        Spacer(Modifier.height(12.dp))
+                        Button(onClick = { viewModel.loadDetail(mediaId, mediaType) }) {
+                            Text("Retry")
+                        }
+                    }
+                }
+                uiState.detail != null -> {
+                    DetailContent(
+                        detail = uiState.detail!!,
+                        isInWatchlist = uiState.isInWatchlist,
+                        preferencesManager = preferencesManager,
+                        onWatchlistToggle = viewModel::toggleWatchlist,
+                        onBack = onBack,
+                        onMediaClick = onMediaClick,
+                        viewModel = viewModel
+                    )
+                }
             }
         }
     }
@@ -205,6 +236,40 @@ private fun DetailContent(
                 Spacer(Modifier.height(12.dp))
 
                 // Action buttons
+                val isFindingStreams by viewModel.uiState.collectAsStateWithLifecycle()
+                val hasProviders = viewModel.hasEnabledProviders()
+
+                // Find Streams button (only if providers are installed)
+                if (hasProviders) {
+                    OutlinedButton(
+                        onClick = { viewModel.findStreams() },
+                        enabled = !isFindingStreams.isFindingStreams,
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.5.dp,
+                            if (!isFindingStreams.isFindingStreams)
+                                Brush.linearGradient(listOf(FlixoraCyan, FlixoraPurple))
+                            else Brush.linearGradient(listOf(FlixoraWhite40, FlixoraWhite40))
+                        ),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = FlixoraCyan,
+                            disabledContentColor = FlixoraWhite40
+                        )
+                    ) {
+                        if (isFindingStreams.isFindingStreams) {
+                            CircularProgressIndicator(color = FlixoraCyan, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Searching streams…", fontWeight = FontWeight.Bold)
+                        } else {
+                            Icon(Icons.Filled.PlayCircle, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Find Streams", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)

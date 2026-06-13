@@ -3,6 +3,8 @@ package com.hexaghost.flixora.presentation.detail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hexaghost.flixora.domain.model.MediaDetail
+import com.hexaghost.flixora.domain.model.StreamResult
+import com.hexaghost.flixora.domain.repository.ProviderRepository
 import com.hexaghost.flixora.domain.usecase.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -13,7 +15,12 @@ data class DetailUiState(
     val isLoading: Boolean = true,
     val detail: MediaDetail? = null,
     val isInWatchlist: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    // Provider stream resolution
+    val isFindingStreams: Boolean = false,
+    val streamResults: List<StreamResult> = emptyList(),
+    val streamError: String? = null,
+    val showStreamPicker: Boolean = false
 )
 
 @HiltViewModel
@@ -21,7 +28,8 @@ class DetailViewModel @Inject constructor(
     private val getMediaDetailUseCase: GetMediaDetailUseCase,
     private val addToWatchlistUseCase: AddToWatchlistUseCase,
     private val removeFromWatchlistUseCase: RemoveFromWatchlistUseCase,
-    private val isInWatchlistUseCase: IsInWatchlistUseCase
+    private val isInWatchlistUseCase: IsInWatchlistUseCase,
+    private val providerRepository: ProviderRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DetailUiState())
@@ -87,4 +95,60 @@ class DetailViewModel @Inject constructor(
             _hasScrobbled.value = true
         }
     }
+
+    // ── Stream Resolution ─────────────────────────────────────────────────────
+
+    fun findStreams() {
+        val detail = _uiState.value.detail ?: return
+        val enabledProviders = providerRepository.getInstalledProviders().filter { it.isEnabled }
+        if (enabledProviders.isEmpty()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isFindingStreams = true, streamError = null, streamResults = emptyList()) }
+
+            val year = detail.releaseDate?.take(4)?.toIntOrNull() ?: 0
+            val allStreams = mutableListOf<StreamResult>()
+
+            enabledProviders.forEach { provider ->
+                providerRepository.resolveStreams(
+                    provider = provider,
+                    tmdbId = detail.id,
+                    title = detail.title,
+                    mediaType = detail.mediaType,
+                    year = year
+                ).onSuccess { streams ->
+                    allStreams.addAll(streams)
+                }
+            }
+
+            if (allStreams.isEmpty()) {
+                _uiState.update {
+                    it.copy(
+                        isFindingStreams = false,
+                        streamError = "No streams found by any provider.",
+                        showStreamPicker = false
+                    )
+                }
+            } else {
+                _uiState.update {
+                    it.copy(
+                        isFindingStreams = false,
+                        streamResults = allStreams,
+                        showStreamPicker = true
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissStreamPicker() {
+        _uiState.update { it.copy(showStreamPicker = false) }
+    }
+
+    fun clearStreamError() {
+        _uiState.update { it.copy(streamError = null) }
+    }
+
+    fun hasEnabledProviders(): Boolean =
+        providerRepository.getInstalledProviders().any { it.isEnabled }
 }
