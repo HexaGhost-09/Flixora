@@ -56,8 +56,10 @@ fun SearchScreen(
         }
     }
 
-    LaunchedEffect(browseUiState.isLoadingGenres, browseUiState.isLoadingMedia) {
-        if (!browseUiState.isLoadingGenres && !browseUiState.isLoadingMedia) {
+    LaunchedEffect(browseUiState.isRefreshing) {
+        if (browseUiState.isRefreshing) {
+            pullToRefreshState.startRefresh()
+        } else {
             pullToRefreshState.endRefresh()
         }
     }
@@ -80,7 +82,7 @@ fun SearchScreen(
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
             Text(
-                text = "Search & Explore",
+                text = "Explore",
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
                 color = FlixoraWhite
             )

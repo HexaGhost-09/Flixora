@@ -21,7 +21,8 @@ data class BrowseUiState(
     val selectedGenre: Genre? = null,
     val selectedTab: Int = 0, // 0=Movies, 1=TV
     val mediaList: List<Media> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    val isRefreshing: Boolean = false
 )
 
 @HiltViewModel
@@ -93,7 +94,7 @@ class BrowseViewModel @Inject constructor(
 
     fun refreshData() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingGenres = true, isLoadingMedia = true, error = null) }
+            _uiState.update { it.copy(isRefreshing = true, error = null) }
             cachedState = _uiState.value
 
             val currentGenre = _uiState.value.selectedGenre
@@ -113,19 +114,19 @@ class BrowseViewModel @Inject constructor(
                         discoverByGenreUseCase.discoverTv(genreToLoad.id)
                     }
                     result.onSuccess { media ->
-                        _uiState.update { it.copy(isLoadingMedia = false, mediaList = media) }
+                        _uiState.update { it.copy(isRefreshing = false, isLoadingMedia = false, mediaList = media) }
                         cachedState = _uiState.value
                     }.onFailure { e ->
-                        _uiState.update { it.copy(isLoadingMedia = false, error = e.message) }
+                        _uiState.update { it.copy(isRefreshing = false, isLoadingMedia = false, error = e.message) }
                         cachedState = _uiState.value
                     }
                 } else {
-                    _uiState.update { it.copy(isLoadingMedia = false) }
+                    _uiState.update { it.copy(isRefreshing = false, isLoadingMedia = false) }
                     cachedState = _uiState.value
                 }
             }.onFailure { e ->
                 _uiState.update {
-                    it.copy(isLoadingGenres = false, isLoadingMedia = false, error = e.message)
+                    it.copy(isRefreshing = false, isLoadingGenres = false, isLoadingMedia = false, error = e.message)
                 }
                 cachedState = _uiState.value
             }
