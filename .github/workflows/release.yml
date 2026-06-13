@@ -54,6 +54,16 @@ jobs:
       - name: Generate Wrapper Executables
         run: gradle wrapper
 
+      - name: Decode Google Services JSON
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" | base64 --decode > app/google-services.json
+          else
+            echo "Warning: GOOGLE_SERVICES_JSON secret is not set!"
+          fi
+
       - name: Build APKs
         run: |
           ./gradlew assembleDebug
@@ -84,8 +94,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.3
-          name: Release v0.1.3
+          tag_name: v0.1.4
+          name: Release v0.1.4
           draft: false
           prerelease: false
           files: |
