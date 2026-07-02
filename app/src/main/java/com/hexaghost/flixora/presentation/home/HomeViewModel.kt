@@ -6,6 +6,8 @@ import com.hexaghost.flixora.domain.model.Media
 import com.hexaghost.flixora.domain.usecase.GetPopularMoviesUseCase
 import com.hexaghost.flixora.domain.usecase.GetPopularTvUseCase
 import com.hexaghost.flixora.domain.usecase.GetTrendingUseCase
+import com.hexaghost.flixora.data.local.PreferencesManager
+import com.hexaghost.flixora.data.local.ContinueWatchingItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +22,7 @@ data class HomeUiState(
     val trending: List<Media> = emptyList(),
     val popularMovies: List<Media> = emptyList(),
     val popularTvShows: List<Media> = emptyList(),
+    val continueWatching: List<ContinueWatchingItem> = emptyList(),
     val error: String? = null
 )
 
@@ -27,7 +30,8 @@ data class HomeUiState(
 class HomeViewModel @Inject constructor(
     private val getTrendingUseCase: GetTrendingUseCase,
     private val getPopularMoviesUseCase: GetPopularMoviesUseCase,
-    private val getPopularTvUseCase: GetPopularTvUseCase
+    private val getPopularTvUseCase: GetPopularTvUseCase,
+    private val preferencesManager: PreferencesManager
 ) : ViewModel() {
 
     companion object {
@@ -62,15 +66,26 @@ class HomeViewModel @Inject constructor(
                     trending = trending,
                     popularMovies = movies,
                     popularTvShows = tv,
+                    continueWatching = preferencesManager.getContinueWatchingItems(),
                     error = null
                 )
                 _uiState.value = newState
                 cachedState = newState
             } catch (e: Exception) {
                 _uiState.update {
-                    it.copy(isLoading = false, error = e.message ?: "Failed to load content")
+                    it.copy(
+                        isLoading = false,
+                        continueWatching = preferencesManager.getContinueWatchingItems(),
+                        error = e.message ?: "Failed to load content"
+                    )
                 }
             }
+        }
+    }
+
+    fun refreshContinueWatching() {
+        _uiState.update {
+            it.copy(continueWatching = preferencesManager.getContinueWatchingItems())
         }
     }
 }

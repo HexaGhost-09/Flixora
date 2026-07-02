@@ -37,6 +37,7 @@ import com.hexaghost.flixora.ui.components.RatingBadge
 import com.hexaghost.flixora.ui.theme.*
 import com.hexaghost.flixora.data.local.PreferencesManager
 import com.hexaghost.flixora.presentation.providers.StreamPickerDialog
+import com.hexaghost.flixora.data.local.ContinueWatchingItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,7 +47,7 @@ fun DetailScreen(
     preferencesManager: PreferencesManager,
     onBack: () -> Unit,
     onMediaClick: (Int, String) -> Unit,
-    onPlayStream: (StreamResult) -> Unit = {},
+    onPlayStream: (StreamResult, String) -> Unit = { _, _ -> },
     viewModel: DetailViewModel = hiltViewModel()
 ) {
     LaunchedEffect(mediaId, mediaType) {
@@ -63,7 +64,21 @@ fun DetailScreen(
             onDismiss = { viewModel.dismissStreamPicker() },
             onSelect = { stream ->
                 viewModel.dismissStreamPicker()
-                onPlayStream(stream)
+                val detail = uiState.detail
+                if (detail != null) {
+                    preferencesManager.saveContinueWatchingItem(
+                        ContinueWatchingItem(
+                            id = detail.id,
+                            title = detail.title,
+                            mediaType = detail.mediaType,
+                            posterPath = detail.posterPath,
+                            backdropPath = detail.backdropPath,
+                            voteAverage = detail.voteAverage,
+                            progress = 0.05f
+                        )
+                    )
+                }
+                onPlayStream(stream, uiState.detail?.title ?: "")
             }
         )
     }

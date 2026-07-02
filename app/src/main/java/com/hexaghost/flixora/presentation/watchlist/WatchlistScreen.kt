@@ -18,6 +18,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hexaghost.flixora.ui.components.MediaCard
 import com.hexaghost.flixora.ui.theme.*
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Sync
+
 @Composable
 fun WatchlistScreen(
     onMediaClick: (Int, String) -> Unit,
@@ -42,18 +48,49 @@ fun WatchlistScreen(
                 )
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
-            Column {
-                Text(
-                    text = "My Watchlist",
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                    color = FlixoraWhite
-                )
-                if (watchlist.isNotEmpty()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
                     Text(
-                        text = "${watchlist.size} ${if (watchlist.size == 1) "title" else "titles"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = FlixoraWhite60
+                        text = "My Watchlist",
+                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                        color = FlixoraWhite
                     )
+                    if (watchlist.isNotEmpty()) {
+                        Text(
+                            text = "${watchlist.size} ${if (watchlist.size == 1) "title" else "titles"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = FlixoraWhite60
+                        )
+                    }
+                }
+                if (viewModel.isTraktConnected) {
+                    Surface(
+                        color = Color(0xFFED1C24).copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Color(0xFFED1C24).copy(alpha = 0.4f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Sync,
+                                contentDescription = null,
+                                tint = Color(0xFFED1C24),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = "Trakt Synced",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = Color(0xFFED1C24)
+                            )
+                        }
+                    }
                 }
             }
         }

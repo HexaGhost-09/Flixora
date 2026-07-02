@@ -181,14 +181,11 @@ fun FlixoraNavigation(
                     onMediaClick = { id, type ->
                         navController.navigate(Screen.Detail.createRoute(id, type))
                     },
-                    onPlayStream = { stream ->
+                    onPlayStream = { stream, title ->
                         val encodedUrl = URLEncoder.encode(stream.url, StandardCharsets.UTF_8.toString())
                         val encodedQuality = URLEncoder.encode(stream.quality, StandardCharsets.UTF_8.toString())
                         val encodedProvider = URLEncoder.encode(stream.providerName, StandardCharsets.UTF_8.toString())
-                        val encodedTitle = URLEncoder.encode(
-                            navController.currentBackStackEntry?.arguments?.getString("mediaType") ?: "",
-                            StandardCharsets.UTF_8.toString()
-                        )
+                        val encodedTitle = URLEncoder.encode(title, StandardCharsets.UTF_8.toString())
                         navController.navigate(
                             Screen.StreamPlayer.createRoute(encodedUrl, encodedQuality, encodedProvider, encodedTitle)
                         )
@@ -221,6 +218,7 @@ fun FlixoraNavigation(
                         providerName = decodedProvider
                     ),
                     mediaTitle = decodedTitle,
+                    preferencesManager = preferencesManager,
                     onBack = { navController.popBackStack() }
                 )
             }

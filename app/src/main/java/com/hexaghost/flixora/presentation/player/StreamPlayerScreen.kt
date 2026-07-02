@@ -35,6 +35,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.hexaghost.flixora.domain.model.StreamResult
 import com.hexaghost.flixora.ui.theme.*
+import com.hexaghost.flixora.data.local.PreferencesManager
 import kotlinx.coroutines.delay
 
 @OptIn(UnstableApi::class)
@@ -42,6 +43,7 @@ import kotlinx.coroutines.delay
 fun StreamPlayerScreen(
     stream: StreamResult,
     mediaTitle: String,
+    preferencesManager: PreferencesManager,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -71,6 +73,16 @@ fun StreamPlayerScreen(
     var errorMessage by remember { mutableStateOf("") }
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
+    var showTraktScrobbleStatus by remember { mutableStateOf(false) }
+
+    // Trakt Scrobbling Toast
+    LaunchedEffect(isPlaying) {
+        if (isPlaying && preferencesManager.isTraktConnected) {
+            showTraktScrobbleStatus = true
+            delay(4000)
+            showTraktScrobbleStatus = false
+        }
+    }
 
     // Auto-hide controls
     LaunchedEffect(showControls) {
@@ -80,12 +92,20 @@ fun StreamPlayerScreen(
         }
     }
 
-    // Position tracking
+    // Position tracking & Continue Watching Save
     LaunchedEffect(exoPlayer) {
         while (true) {
             currentPosition = exoPlayer.currentPosition
             duration = exoPlayer.duration.coerceAtLeast(0L)
-            delay(500)
+            if (duration > 0L) {
+                val progress = currentPosition.toFloat() / duration.toFloat()
+                val items = preferencesManager.getContinueWatchingItems()
+                val target = items.firstOrNull { it.title == mediaTitle }
+                if (target != null) {
+                    preferencesManager.updateContinueWatchingProgress(target.id, progress)
+                }
+            }
+            delay(1000)
         }
     }
 
@@ -152,6 +172,45 @@ fun StreamPlayerScreen(
                         onClick = { exoPlayer.prepare(); hasError = false },
                         colors = ButtonDefaults.buttonColors(containerColor = FlixoraCyan, contentColor = Color.Black)
                     ) { Text("Retry") }
+                }
+            }
+        }
+
+        // Trakt Scrobble Indicator
+        AnimatedVisibility(
+            visible = showTraktScrobbleStatus,
+            enter = slideInVertically { -it } + fadeIn(),
+            exit = slideOutVertically { -it } + fadeOut(),
+            modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
+        ) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFED1C24).copy(alpha = 0.9f)),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Sync,
+                        contentDescription = "Sync",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Column {
+                        Text(
+                            text = "Scrobbling to Trakt",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Now Watching: $mediaTitle",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
                 }
             }
         }

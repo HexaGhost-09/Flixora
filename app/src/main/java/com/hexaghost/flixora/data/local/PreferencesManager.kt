@@ -1,6 +1,8 @@
 package com.hexaghost.flixora.data.local
 
 import android.content.Context
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -72,4 +74,47 @@ class PreferencesManager @Inject constructor(
     fun clearSearchHistory() {
         searchHistory = emptyList()
     }
+
+    // Continue Watching and Trakt Progress Sync
+    fun getContinueWatchingItems(): List<ContinueWatchingItem> {
+        val json = prefs.getString("continue_watching_items", "[]") ?: "[]"
+        val type = object : TypeToken<List<ContinueWatchingItem>>() {}.type
+        return try {
+            Gson().fromJson(json, type) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    fun saveContinueWatchingItem(item: ContinueWatchingItem) {
+        val current = getContinueWatchingItems().toMutableList()
+        current.removeAll { it.id == item.id }
+        current.add(0, item) // add to top
+        if (current.size > 8) {
+            current.removeAt(current.size - 1) // keep last 8
+        }
+        val json = Gson().toJson(current)
+        prefs.edit().putString("continue_watching_items", json).apply()
+    }
+
+    fun updateContinueWatchingProgress(id: Int, progress: Float) {
+        val current = getContinueWatchingItems().toMutableList()
+        val index = current.indexOfFirst { it.id == id }
+        if (index != -1) {
+            val updated = current[index].copy(progress = progress)
+            current[index] = updated
+            val json = Gson().toJson(current)
+            prefs.edit().putString("continue_watching_items", json).apply()
+        }
+    }
 }
+
+data class ContinueWatchingItem(
+    val id: Int,
+    val title: String,
+    val mediaType: String,
+    val posterPath: String?,
+    val backdropPath: String?,
+    val voteAverage: Double,
+    val progress: Float
+)

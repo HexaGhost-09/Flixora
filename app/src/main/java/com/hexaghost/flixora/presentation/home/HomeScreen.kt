@@ -14,11 +14,19 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hexaghost.flixora.domain.model.Media
 import com.hexaghost.flixora.ui.components.*
-import com.hexaghost.flixora.ui.theme.FlixoraDarkBg
-import com.hexaghost.flixora.ui.theme.FlixoraDarkSurface
-import com.hexaghost.flixora.ui.theme.FlixoraCyan
+import com.hexaghost.flixora.ui.theme.*
 import androidx.compose.material3.pulltorefresh.*
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayCircle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,6 +38,10 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pullToRefreshState = rememberPullToRefreshState()
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshContinueWatching()
+    }
 
     if (pullToRefreshState.isRefreshing) {
         LaunchedEffect(true) {
@@ -79,6 +91,28 @@ fun HomeScreen(
                                         .fillMaxWidth()
                                         .height(480.dp)
                                     )
+                            }
+                        }
+
+                        // Continue Watching (Trakt Sync / Watch Progress)
+                        if (uiState.continueWatching.isNotEmpty()) {
+                            item {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                SectionHeader(
+                                    title = "⏳ Continue Watching",
+                                    onSeeAllClick = {}
+                                )
+                                LazyRow(
+                                    contentPadding = PaddingValues(horizontal = 16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    items(uiState.continueWatching) { item ->
+                                        ContinueWatchingCard(
+                                            item = item,
+                                            onClick = { onMediaClick(item.id, item.mediaType) }
+                                        )
+                                    }
+                                }
                             }
                         }
 
@@ -191,6 +225,75 @@ fun ErrorView(
         Spacer(modifier = Modifier.height(24.dp))
         Button(onClick = onRetry) {
             Text("Retry")
+        }
+    }
+}
+
+@Composable
+fun ContinueWatchingCard(
+    item: com.hexaghost.flixora.data.local.ContinueWatchingItem,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .width(200.dp)
+            .height(130.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = FlixoraDarkSurface),
+        border = BorderStroke(1.dp, Color(0x1AFFFFFF))
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            coil.compose.AsyncImage(
+                model = item.backdropPath ?: item.posterPath,
+                contentDescription = item.title,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color(0xE0000000)
+                            )
+                        )
+                    )
+            )
+            Icon(
+                imageVector = Icons.Filled.PlayCircle,
+                contentDescription = null,
+                tint = FlixoraCyan.copy(alpha = 0.9f),
+                modifier = Modifier
+                    .size(36.dp)
+                    .align(Alignment.Center)
+            )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(8.dp)
+            ) {
+                Text(
+                    text = item.title,
+                    color = FlixoraWhite,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                LinearProgressIndicator(
+                    progress = { item.progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    color = FlixoraCyan,
+                    trackColor = Color.White.copy(alpha = 0.3f),
+                )
+            }
         }
     }
 }
