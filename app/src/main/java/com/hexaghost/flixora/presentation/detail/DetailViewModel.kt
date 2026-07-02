@@ -101,7 +101,14 @@ class DetailViewModel @Inject constructor(
     fun findStreams() {
         val detail = _uiState.value.detail ?: return
         val enabledProviders = providerRepository.getInstalledProviders().filter { it.isEnabled }
-        if (enabledProviders.isEmpty()) return
+        if (enabledProviders.isEmpty()) {
+            _uiState.update {
+                it.copy(
+                    streamError = "No providers enabled. Please enable a provider in the Providers tab."
+                )
+            }
+            return
+        }
 
         viewModelScope.launch {
             _uiState.update { it.copy(isFindingStreams = true, streamError = null, streamResults = emptyList()) }
