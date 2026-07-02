@@ -67,7 +67,7 @@ class ProviderRepositoryImpl @Inject constructor(
         val obj = JSONObject(json)
         val name = obj.optString("name", "Unknown Repo")
         val description = obj.optString("description", "")
-        val providersArray = obj.optJSONArray("providers")
+        val providersArray = obj.optJSONArray("providers") ?: obj.optJSONArray("scrapers")
         val providers = mutableListOf<ProviderInfo>()
         if (providersArray != null) {
             for (i in 0 until providersArray.length()) {
