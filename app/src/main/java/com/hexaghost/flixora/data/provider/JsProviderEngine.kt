@@ -9,6 +9,8 @@ import org.mozilla.javascript.NativeArray
 import org.mozilla.javascript.NativeObject
 import org.mozilla.javascript.ScriptableObject
 import okhttp3.OkHttpClient
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -72,7 +74,7 @@ class JsProviderEngine @Inject constructor(
 
         if (method.equals("POST", ignoreCase = true) || method.equals("PUT", ignoreCase = true)) {
             val mediaType = headersMap["Content-Type"] ?: "application/json"
-            val reqBody = okhttp3.RequestBody.create(okhttp3.MediaType.parse(mediaType), bodyStr ?: "")
+            val reqBody = (bodyStr ?: "").toRequestBody(mediaType.toMediaTypeOrNull())
             builder.method(method.uppercase(), reqBody)
         } else {
             builder.method(method.uppercase(), null)
