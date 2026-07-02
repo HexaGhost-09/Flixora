@@ -92,8 +92,12 @@ class ProviderRepositoryImpl @Inject constructor(
     override suspend fun installProvider(provider: ProviderInfo): Result<InstalledProvider> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val baseUrl = provider.repositoryUrl.trimEnd('/')
-                val jsUrl = "$baseUrl/${provider.filename.trimStart('/')}"
+                val jsUrl = if (provider.filename.startsWith("http://") || provider.filename.startsWith("https://")) {
+                    provider.filename
+                } else {
+                    val baseUrl = provider.repositoryUrl.trimEnd('/')
+                    "$baseUrl/${provider.filename.trimStart('/')}"
+                }
                 val request = Request.Builder().url(jsUrl).build()
                 val response = okHttpClient.newCall(request).execute()
                 if (!response.isSuccessful) error("HTTP ${response.code}: Failed to download provider JS")
