@@ -67,11 +67,22 @@ class ProviderRepositoryImpl @Inject constructor(
         val obj = JSONObject(json)
         val name = obj.optString("name", "Unknown Repo")
         val description = obj.optString("description", "")
+        // Nuvio repos use "scrapers" key; Flixora-native repos use "providers"
         val providersArray = obj.optJSONArray("providers") ?: obj.optJSONArray("scrapers")
         val providers = mutableListOf<ProviderInfo>()
         if (providersArray != null) {
             for (i in 0 until providersArray.length()) {
                 val p = providersArray.getJSONObject(i)
+                // Parse supportedTypes array
+                val typesArray = p.optJSONArray("supportedTypes")
+                val supportedTypes = if (typesArray != null) {
+                    (0 until typesArray.length()).map { typesArray.getString(it) }
+                } else listOf("movie", "tv")
+                // Parse formats array
+                val formatsArray = p.optJSONArray("formats")
+                val formats = if (formatsArray != null) {
+                    (0 until formatsArray.length()).map { formatsArray.getString(it) }
+                } else emptyList()
                 providers.add(
                     ProviderInfo(
                         id = p.optString("id", "unknown-$i"),
@@ -79,7 +90,12 @@ class ProviderRepositoryImpl @Inject constructor(
                         version = p.optString("version", "1.0.0"),
                         filename = p.optString("filename", ""),
                         description = p.optString("description", ""),
-                        repositoryUrl = repoUrl
+                        repositoryUrl = repoUrl,
+                        author = p.optString("author", ""),
+                        logo = p.optString("logo", ""),
+                        supportedTypes = supportedTypes,
+                        formats = formats,
+                        enabled = p.optBoolean("enabled", true)
                     )
                 )
             }
@@ -112,7 +128,9 @@ class ProviderRepositoryImpl @Inject constructor(
                     version = provider.version,
                     jsFilePath = jsFile.absolutePath,
                     repositoryUrl = provider.repositoryUrl,
-                    isEnabled = true
+                    isEnabled = true,
+                    logo = provider.logo,
+                    supportedTypes = provider.supportedTypes
                 )
                 saveInstalledProvider(installed)
                 installed
@@ -161,10 +179,12 @@ class ProviderRepositoryImpl @Inject constructor(
         tmdbId: Int,
         title: String,
         mediaType: String,
-        year: Int
+        year: Int,
+        season: Int,
+        episode: Int
     ): Result<List<StreamResult>> {
         val jsFile = File(provider.jsFilePath)
         if (!jsFile.exists()) return Result.failure(Exception("Provider JS file not found: ${jsFile.path}"))
-        return jsEngine.resolveStreams(jsFile, tmdbId, title, mediaType, year, provider.name)
+        return jsEngine.resolveStreams(jsFile, tmdbId, title, mediaType, year, provider.name, season, episode)
     }
 }

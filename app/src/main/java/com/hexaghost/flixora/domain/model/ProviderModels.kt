@@ -12,6 +12,7 @@ data class Repository(
 
 /**
  * Metadata for a single provider listed in a repository manifest.
+ * Compatible with both Flixora-native (providers[]) and Nuvio (scrapers[]) manifest formats.
  */
 data class ProviderInfo(
     val id: String,
@@ -19,7 +20,12 @@ data class ProviderInfo(
     val version: String,
     val filename: String,
     val description: String = "",
-    val repositoryUrl: String = ""
+    val repositoryUrl: String = "",
+    val author: String = "",
+    val logo: String = "",
+    val supportedTypes: List<String> = listOf("movie", "tv"),
+    val formats: List<String> = emptyList(),
+    val enabled: Boolean = true
 )
 
 /**
@@ -31,7 +37,9 @@ data class InstalledProvider(
     val version: String,
     val jsFilePath: String,
     val repositoryUrl: String,
-    val isEnabled: Boolean = true
+    val isEnabled: Boolean = true,
+    val logo: String = "",
+    val supportedTypes: List<String> = listOf("movie", "tv")
 )
 
 /**

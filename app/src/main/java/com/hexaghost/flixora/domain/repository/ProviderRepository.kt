@@ -32,12 +32,15 @@ interface ProviderRepository {
 
     /**
      * Execute [provider]'s JS file, passing media info, and return resolved stream URLs.
+     * [season] and [episode] are required for TV shows (0 for movies).
      */
     suspend fun resolveStreams(
         provider: InstalledProvider,
         tmdbId: Int,
         title: String,
         mediaType: String,
-        year: Int
+        year: Int,
+        season: Int = 0,
+        episode: Int = 0
     ): Result<List<StreamResult>>
 }

@@ -118,6 +118,9 @@ dependencies {
     // Rhino JS Engine (provider script execution)
     implementation(libs.rhino)
 
+    // Jsoup HTML parser (for cheerio shim in JS provider engine)
+    implementation(libs.jsoup)
+
     // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth.ktx)
