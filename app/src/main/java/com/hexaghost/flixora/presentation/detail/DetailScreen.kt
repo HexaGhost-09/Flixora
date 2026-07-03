@@ -47,6 +47,7 @@ fun DetailScreen(
     preferencesManager: PreferencesManager,
     onBack: () -> Unit,
     onMediaClick: (Int, String) -> Unit,
+    onWatchNowClick: (Int, String) -> Unit = { _, _ -> },
     onPlayStream: (StreamResult, String) -> Unit = { _, _ -> },
     viewModel: DetailViewModel = hiltViewModel()
 ) {
@@ -129,6 +130,7 @@ fun DetailScreen(
                         onWatchlistToggle = viewModel::toggleWatchlist,
                         onBack = onBack,
                         onMediaClick = onMediaClick,
+                        onWatchNowClick = onWatchNowClick,
                         viewModel = viewModel
                     )
                 }
@@ -146,6 +148,7 @@ private fun DetailContent(
     onWatchlistToggle: () -> Unit,
     onBack: () -> Unit,
     onMediaClick: (Int, String) -> Unit,
+    onWatchNowClick: (Int, String) -> Unit,
     viewModel: DetailViewModel
 ) {
     LazyColumn(
@@ -250,35 +253,23 @@ private fun DetailContent(
 
                 Spacer(Modifier.height(12.dp))
 
-                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-                val isFindingStreams = uiState.isFindingStreams
-                
                 // Watch Now button
                 OutlinedButton(
-                    onClick = { viewModel.findStreams() },
-                    enabled = !isFindingStreams,
+                    onClick = { onWatchNowClick(detail.id, detail.mediaType) },
+                    enabled = true,
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                     shape = RoundedCornerShape(12.dp),
                     border = androidx.compose.foundation.BorderStroke(
                         1.5.dp,
-                        if (!isFindingStreams)
-                            Brush.linearGradient(listOf(FlixoraCyan, FlixoraPurple))
-                        else Brush.linearGradient(listOf(FlixoraWhite40, FlixoraWhite40))
+                        Brush.linearGradient(listOf(FlixoraCyan, FlixoraPurple))
                     ),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = FlixoraCyan,
-                        disabledContentColor = FlixoraWhite40
+                        contentColor = FlixoraCyan
                     )
                 ) {
-                    if (isFindingStreams) {
-                        CircularProgressIndicator(color = FlixoraCyan, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Searching streams…", fontWeight = FontWeight.Bold)
-                    } else {
-                        Icon(Icons.Filled.PlayCircle, contentDescription = null, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Watch Now", fontWeight = FontWeight.Bold)
-                    }
+                    Icon(Icons.Filled.PlayCircle, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Watch Now", fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(10.dp))
 

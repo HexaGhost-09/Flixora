@@ -18,4 +18,7 @@ sealed class Screen(val route: String) {
             title: String
         ) = "stream_player/${encodedUrl}/${quality}/${providerName}/${title}"
     }
+    data object StreamList : Screen("stream_list/{mediaId}/{mediaType}") {
+        fun createRoute(mediaId: Int, mediaType: String) = "stream_list/$mediaId/$mediaType"
+    }
 }

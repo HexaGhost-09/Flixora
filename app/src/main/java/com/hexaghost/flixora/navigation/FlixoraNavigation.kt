@@ -181,11 +181,40 @@ fun FlixoraNavigation(
                     onMediaClick = { id, type ->
                         navController.navigate(Screen.Detail.createRoute(id, type))
                     },
+                    onWatchNowClick = { id, type ->
+                        navController.navigate(Screen.StreamList.createRoute(id, type))
+                    },
                     onPlayStream = { stream, title ->
                         val encodedUrl = URLEncoder.encode(stream.url, StandardCharsets.UTF_8.toString())
                         val encodedQuality = URLEncoder.encode(stream.quality, StandardCharsets.UTF_8.toString())
                         val encodedProvider = URLEncoder.encode(stream.providerName, StandardCharsets.UTF_8.toString())
                         val encodedTitle = URLEncoder.encode(title, StandardCharsets.UTF_8.toString())
+                        navController.navigate(
+                            Screen.StreamPlayer.createRoute(encodedUrl, encodedQuality, encodedProvider, encodedTitle)
+                        )
+                    }
+                )
+            }
+
+            composable(
+                route = Screen.StreamList.route,
+                arguments = listOf(
+                    navArgument("mediaId") { type = NavType.IntType },
+                    navArgument("mediaType") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val mediaId = backStackEntry.arguments?.getInt("mediaId") ?: return@composable
+                val mediaType = backStackEntry.arguments?.getString("mediaType") ?: "movie"
+                com.hexaghost.flixora.presentation.detail.StreamListScreen(
+                    mediaId = mediaId,
+                    mediaType = mediaType,
+                    preferencesManager = preferencesManager,
+                    onBack = { navController.popBackStack() },
+                    onPlayStream = { stream, title ->
+                        val encodedUrl = java.net.URLEncoder.encode(stream.url, java.nio.charset.StandardCharsets.UTF_8.toString())
+                        val encodedQuality = java.net.URLEncoder.encode(stream.quality, java.nio.charset.StandardCharsets.UTF_8.toString())
+                        val encodedProvider = java.net.URLEncoder.encode(stream.providerName, java.nio.charset.StandardCharsets.UTF_8.toString())
+                        val encodedTitle = java.net.URLEncoder.encode(title, java.nio.charset.StandardCharsets.UTF_8.toString())
                         navController.navigate(
                             Screen.StreamPlayer.createRoute(encodedUrl, encodedQuality, encodedProvider, encodedTitle)
                         )
