@@ -250,8 +250,8 @@ private fun DetailContent(
 
                 Spacer(Modifier.height(12.dp))
 
-                // Action buttons
-                val isFindingStreams by viewModel.uiState.collectAsStateWithLifecycle()
+                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                val isFindingStreams = uiState.isFindingStreams
                 
                 // Watch Now button
                 OutlinedButton(
