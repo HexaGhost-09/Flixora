@@ -256,12 +256,12 @@ private fun DetailContent(
                 // Watch Now button
                 OutlinedButton(
                     onClick = { viewModel.findStreams() },
-                    enabled = !isFindingStreams.isFindingStreams,
+                    enabled = !isFindingStreams,
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                     shape = RoundedCornerShape(12.dp),
                     border = androidx.compose.foundation.BorderStroke(
                         1.5.dp,
-                        if (!isFindingStreams.isFindingStreams)
+                        if (!isFindingStreams)
                             Brush.linearGradient(listOf(FlixoraCyan, FlixoraPurple))
                         else Brush.linearGradient(listOf(FlixoraWhite40, FlixoraWhite40))
                     ),
@@ -270,7 +270,7 @@ private fun DetailContent(
                         disabledContentColor = FlixoraWhite40
                     )
                 ) {
-                    if (isFindingStreams.isFindingStreams) {
+                    if (isFindingStreams) {
                         CircularProgressIndicator(color = FlixoraCyan, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(8.dp))
                         Text("Searching streams…", fontWeight = FontWeight.Bold)
