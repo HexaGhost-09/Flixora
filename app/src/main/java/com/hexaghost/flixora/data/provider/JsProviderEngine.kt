@@ -39,6 +39,59 @@ class JsProviderEngine @Inject constructor(
 ) {
     private val TAG = "JsProviderEngine"
 
+    // ── Safe Loggers for JVM Unit Testing ──────────────────────────────────────
+
+    private fun logD(tag: String, msg: String) {
+        try {
+            Log.d(tag, msg)
+        } catch (e: Exception) {
+            println("[$tag] $msg")
+        }
+    }
+
+    private fun logE(tag: String, msg: String, tr: Throwable? = null) {
+        try {
+            if (tr != null) Log.e(tag, msg, tr) else Log.e(tag, msg)
+        } catch (e: Exception) {
+            System.err.println("[$tag] ERROR: $msg")
+            tr?.printStackTrace()
+        }
+    }
+
+    private fun stripDefaultParameters(js: String): String {
+        // Find function definitions with parameter lists: function name(params) { or (params) => {
+        val functionRegex = Regex("""(function\*?\s*[a-zA-Z0-9_${'$'}]*\s*\(([^)]*)\)\s*\{)|(\(([^)]*)\)\s*=>\s*\{)""")
+        
+        return functionRegex.replace(js) { matchResult ->
+            val fullMatch = matchResult.value
+            val isArrow = matchResult.groupValues[3].isNotEmpty()
+            val paramsList = if (isArrow) matchResult.groupValues[4] else matchResult.groupValues[2]
+            
+            val defaultValPattern = """(?:\{\}|\[\]|"[^"]*"|'[^']*'|true|false|\d+(?:\.\d+)?(?:e\d+)?|null|undefined|void\s+0)"""
+            val paramRegex = Regex("""([a-zA-Z0-9_${'$'}]+)\s*=\s*($defaultValPattern)""")
+            
+            val fallbacks = mutableListOf<String>()
+            val cleanedParamsList = paramRegex.replace(paramsList) { paramMatch ->
+                val name = paramMatch.groupValues[1]
+                val defaultVal = paramMatch.groupValues[2]
+                fallbacks.add("if (typeof $name === 'undefined' || $name === null) $name = $defaultVal;")
+                name
+            }
+            
+            if (fallbacks.isEmpty()) {
+                fullMatch
+            } else {
+                val fallbackStr = fallbacks.joinToString(" ")
+                if (isArrow) {
+                    "($cleanedParamsList) => { $fallbackStr "
+                } else {
+                    val funcHeader = fullMatch.substringBefore("(")
+                    "$funcHeader($cleanedParamsList) { $fallbackStr "
+                }
+            }
+        }
+    }
+
     // ── Public API ─────────────────────────────────────────────────────────────
 
     suspend fun resolveStreams(
@@ -52,7 +105,12 @@ class JsProviderEngine @Inject constructor(
         episode: Int = 0
     ): Result<List<StreamResult>> = withContext(Dispatchers.IO) {
         runCatching {
-            val jsCode = jsFile.readText()
+            val rawJs = jsFile.readText()
+            var jsCode = stripDefaultParameters(rawJs)
+            
+            // Fix Rhino generator.apply bug by using custom __applyGenerator helper
+            jsCode = jsCode.replace("generator = generator.apply(__this, __arguments)", "generator = __applyGenerator(generator, __this, __arguments)")
+
             executeProviderJs(jsCode, tmdbId, title, mediaType, year, providerName, season, episode)
         }
     }
@@ -83,10 +141,10 @@ class JsProviderEngine @Inject constructor(
             val body = response.body?.string() ?: ""
             val respHeaders = mutableMapOf<String, String>()
             response.headers.names().forEach { n -> respHeaders[n] = response.header(n) ?: "" }
-            Log.d(TAG, "fetch OK ${response.code} $url")
+            logD(TAG, "fetch OK ${response.code} $url")
             mapOf("status" to response.code, "ok" to response.isSuccessful, "bodyText" to body, "headers" to respHeaders)
         } catch (e: Exception) {
-            Log.e(TAG, "fetch error $url: ${e.message}")
+            logE(TAG, "fetch error $url: ${e.message}")
             mapOf("status" to 500, "ok" to false, "bodyText" to (e.message ?: ""), "headers" to emptyMap<String, String>())
         }
     }
@@ -136,7 +194,7 @@ class JsProviderEngine @Inject constructor(
         override fun call(cx: Context, callScope: Scriptable, thisObj: Scriptable?, args: Array<out Any?>): Any {
             val tag = args.getOrNull(0)?.toString() ?: TAG
             val msg = args.getOrNull(1)?.toString() ?: ""
-            Log.d(tag, msg)
+            logD(tag, msg)
             return jsUndefined()
         }
     }
@@ -227,14 +285,14 @@ class JsProviderEngine @Inject constructor(
 
             val errorRaw = scope.get("__callError", scope)
             if (errorRaw != null && errorRaw != ScriptableObject.NOT_FOUND && errorRaw.toString() != "null") {
-                Log.e(TAG, "[$providerName] JS error: $errorRaw")
+                logE(TAG, "[$providerName] JS error: $errorRaw")
             }
 
             val resultRaw = scope.get("__callResult", scope)
-            Log.d(TAG, "[$providerName] result type=${resultRaw?.javaClass?.simpleName}")
+            logD(TAG, "[$providerName] result type=${resultRaw?.javaClass?.simpleName}")
             parseJsResult(resultRaw, providerName)
         } catch (e: Exception) {
-            Log.e(TAG, "JS execution failed for '$providerName': ${e.message}", e)
+            logE(TAG, "JS execution failed for '$providerName': ${e.message}", e)
             emptyList()
         } finally {
             Context.exit()
@@ -246,11 +304,11 @@ class JsProviderEngine @Inject constructor(
     private fun buildPolyfills(): String = """
         // ── Console ──────────────────────────────────────────────────────────────
         var console = {
-            log:   function() { var a = Array.prototype.slice.call(arguments).join(' '); __androidLog(__logTag, a); },
-            error: function() { var a = Array.prototype.slice.call(arguments).join(' '); __androidLog(__logTag, 'ERROR: ' + a); },
-            warn:  function() { var a = Array.prototype.slice.call(arguments).join(' '); __androidLog(__logTag, 'WARN: '  + a); },
-            info:  function() { var a = Array.prototype.slice.call(arguments).join(' '); __androidLog(__logTag, 'INFO: '  + a); },
-            debug: function() { var a = Array.prototype.slice.call(arguments).join(' '); __androidLog(__logTag, 'DEBUG: ' + a); }
+            log:   function() { var s = ''; for (var i = 0; i < arguments.length; i++) s += (i > 0 ? ' ' : '') + String(arguments[i]); __androidLog('JsProviderEngine', s); },
+            error: function() { var s = ''; for (var i = 0; i < arguments.length; i++) s += (i > 0 ? ' ' : '') + String(arguments[i]); __androidLog('JsProviderEngine', 'ERROR: ' + s); },
+            warn:  function() { var s = ''; for (var i = 0; i < arguments.length; i++) s += (i > 0 ? ' ' : '') + String(arguments[i]); __androidLog('JsProviderEngine', 'WARN: ' + s); },
+            info:  function() { var s = ''; for (var i = 0; i < arguments.length; i++) s += (i > 0 ? ' ' : '') + String(arguments[i]); __androidLog('JsProviderEngine', 'INFO: ' + s); },
+            debug: function() { var s = ''; for (var i = 0; i < arguments.length; i++) s += (i > 0 ? ' ' : '') + String(arguments[i]); __androidLog('JsProviderEngine', 'DEBUG: ' + s); }
         };
 
         // ── Timers — synchronous stubs ────────────────────────────────────────────
@@ -347,10 +405,14 @@ class JsProviderEngine @Inject constructor(
             return new Promise(function(resolve, reject) {
                 try {
                     var result = __javaFetch(url, options || null);
-                    var bodyText = result.bodyText || '';
-                    var status   = result.status   || 0;
-                    var ok       = result.ok       || false;
-                    var hdrs     = result.headers  || {};
+                    if (!result) {
+                        reject(new Error('Fetch failed: empty response object'));
+                        return;
+                    }
+                    var bodyText = String(result.bodyText || '');
+                    var status   = Number(result.status || 0);
+                    var ok       = Boolean(result.ok || false);
+                    var hdrs     = result.headers || {};
                     var response = {
                         status: status,
                         ok: ok,
@@ -360,9 +422,9 @@ class JsProviderEngine @Inject constructor(
                             get: function(name) {
                                 if (!hdrs) return null;
                                 var v = hdrs[name];
-                                if (v !== undefined && v !== null) return v;
+                                if (v !== undefined && v !== null) return String(v);
                                 for (var k in hdrs) {
-                                    if (k.toLowerCase() === (name || '').toLowerCase()) return hdrs[k];
+                                    if (k.toLowerCase() === (name || '').toLowerCase()) return String(hdrs[k]);
                                 }
                                 return null;
                             },
@@ -382,6 +444,19 @@ class JsProviderEngine @Inject constructor(
                     reject(e);
                 }
             });
+        };
+
+        // ── __applyGenerator polyfill for Rhino generator calling ────────────────
+        var __applyGenerator = function(fn, thisArg, args) {
+            var a = args || [];
+            switch (a.length) {
+                case 0: return fn();
+                case 1: return fn(a[0]);
+                case 2: return fn(a[0], a[1]);
+                case 3: return fn(a[0], a[1], a[2]);
+                case 4: return fn(a[0], a[1], a[2], a[3]);
+                default: return fn(a[0], a[1], a[2], a[3], a[4]);
+            }
         };
     """.trimIndent()
 
@@ -412,6 +487,7 @@ class JsProviderEngine @Inject constructor(
         };
 
         var require = function(moduleName) {
+            console.log('require: ' + moduleName);
             if (__registry[moduleName]) return __registry[moduleName];
             if (moduleName === 'cheerio-without-node-native' ||
                 moduleName === 'react-native-cheerio' ||
@@ -470,8 +546,10 @@ class JsProviderEngine @Inject constructor(
 
             CheerioWrap.prototype.map = function(fn) {
                 var out = [];
-                for (var i = 0; i < this._els.length; i++) out.push(fn.call(new CheerioWrap([this._els[i]]), i, this._els[i]));
-                return out;
+                for (var i = 0; i < this._els.length; i++) {
+                    out.push(fn.call(new CheerioWrap([this._els[i]]), i, this._els[i]));
+                }
+                return new CheerioWrap(out);
             };
 
             CheerioWrap.prototype.filter = function(fn) {
@@ -515,7 +593,10 @@ class JsProviderEngine @Inject constructor(
                 try { var p = this._els[0].previousElementSibling(); return p ? new CheerioWrap([p]) : new CheerioWrap([]); } catch(e) { return new CheerioWrap([]); }
             };
 
-            CheerioWrap.prototype.get = function(i) { return this._els[i]; };
+            CheerioWrap.prototype.get = function(i) {
+                if (i === undefined) return this._els;
+                return this._els[i];
+            };
             CheerioWrap.prototype.toArray = function() { return this._els.slice(); };
             CheerioWrap.prototype.val = function() { return this.attr('value') || ''; };
             CheerioWrap.prototype.data = function(k) { return this.attr('data-' + k); };
