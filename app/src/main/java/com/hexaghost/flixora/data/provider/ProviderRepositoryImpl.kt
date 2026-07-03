@@ -109,15 +109,29 @@ class ProviderRepositoryImpl @Inject constructor(
         withContext(Dispatchers.IO) {
             runCatching {
                 val jsUrl = if (provider.filename.startsWith("http://") || provider.filename.startsWith("https://")) {
+                    // Absolute URL — use as-is
                     provider.filename
                 } else {
-                    val baseUrl = provider.repositoryUrl.trimEnd('/')
+                    // Derive base directory from the repository URL.
+                    // Users add the full manifest URL, e.g.:
+                    //   https://raw.githubusercontent.com/yoruix/nuvio-providers/refs/heads/main/manifest.json
+                    // We must strip "manifest.json" (and any trailing slashes) to get the base directory:
+                    //   https://raw.githubusercontent.com/yoruix/nuvio-providers/refs/heads/main/
+                    val baseUrl = provider.repositoryUrl
+                        .trimEnd('/')
+                        .let { url ->
+                            if (url.endsWith("manifest.json", ignoreCase = true)) {
+                                url.dropLast("manifest.json".length).trimEnd('/')
+                            } else {
+                                url
+                            }
+                        }
                     "$baseUrl/${provider.filename.trimStart('/')}"
                 }
                 val request = Request.Builder().url(jsUrl).build()
                 val response = okHttpClient.newCall(request).execute()
-                if (!response.isSuccessful) error("HTTP ${response.code}: Failed to download provider JS")
-                val jsCode = response.body?.string() ?: error("Empty JS response")
+                if (!response.isSuccessful) error("HTTP ${response.code}: Failed to download '${jsUrl}'")
+                val jsCode = response.body?.string() ?: error("Empty JS response for '${jsUrl}'")
 
                 val jsFile = File(providersDir, "${provider.id}.js")
                 jsFile.writeText(jsCode)
