@@ -330,7 +330,16 @@ class JsProviderEngine @Inject constructor(
                         headers: {
                             get: function(name) {
                                 var h = result.get('headers');
-                                return h ? (h[name] || null) : null;
+                                if (!h) return null;
+                                var val = h[name];
+                                if (val !== undefined && val !== null) return val;
+                                // Fallback to case-insensitive lookup
+                                for (var k in h) {
+                                    if (k.toLowerCase() === name.toLowerCase()) {
+                                        return h[k];
+                                    }
+                                }
+                                return null;
                             }
                         },
                         text: function() { return Promise.resolve(bodyText); },
@@ -437,9 +446,13 @@ class JsProviderEngine @Inject constructor(
             };
 
             CheerioWrap.prototype.attr = function(name) {
-                if (this._els.length === 0) return null;
-                var val = this._els[0].attr(name);
-                return (val === null || val === '') ? null : val;
+                if (this._els.length === 0) return undefined;
+                try {
+                    if (!this._els[0].hasAttr(name)) return undefined;
+                    return this._els[0].attr(name);
+                } catch(e) {
+                    return undefined;
+                }
             };
 
             CheerioWrap.prototype.each = function(fn) {
@@ -510,14 +523,23 @@ class JsProviderEngine @Inject constructor(
             var load = function(html, opts, isDocument) {
                 var jDoc = __jsoupParse(typeof html === 'string' ? html : '', '');
                 var $ = function(selector) {
-                    if (!selector) return new CheerioWrap([jDoc]);
-                    try {
-                        var els = jDoc.select(selector);
-                        var arr = [];
-                        for (var i = 0; i < els.size(); i++) arr.push(els.get(i));
-                        return new CheerioWrap(arr);
-                    } catch(e) {
-                        return new CheerioWrap([]);
+                    if (!selector) return new CheerioWrap([]);
+                    if (typeof selector === 'string') {
+                        try {
+                            var els = jDoc.select(selector);
+                            var arr = [];
+                            for (var i = 0; i < els.size(); i++) arr.push(els.get(i));
+                            return new CheerioWrap(arr);
+                        } catch(e) {
+                            return new CheerioWrap([]);
+                        }
+                    } else if (selector instanceof CheerioWrap) {
+                        return selector;
+                    } else if (Array.isArray(selector)) {
+                        return new CheerioWrap(selector);
+                    } else {
+                        // Wrapping single Java elements/objects
+                        return new CheerioWrap([selector]);
                     }
                 };
                 $.html  = function(wrap) { return wrap ? wrap.html() : jDoc.html(); };

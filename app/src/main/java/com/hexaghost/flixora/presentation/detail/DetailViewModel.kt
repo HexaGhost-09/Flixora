@@ -115,6 +115,7 @@ class DetailViewModel @Inject constructor(
 
             val year = detail.releaseDate?.take(4)?.toIntOrNull() ?: 0
             val allStreams = mutableListOf<StreamResult>()
+            val isTv = detail.mediaType.equals("tv", ignoreCase = true)
 
             enabledProviders.forEach { provider ->
                 providerRepository.resolveStreams(
@@ -122,7 +123,9 @@ class DetailViewModel @Inject constructor(
                     tmdbId = detail.id,
                     title = detail.title,
                     mediaType = detail.mediaType,
-                    year = year
+                    year = year,
+                    season = if (isTv) 1 else 0,
+                    episode = if (isTv) 1 else 0
                 ).onSuccess { streams ->
                     allStreams.addAll(streams)
                 }
