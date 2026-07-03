@@ -10,13 +10,15 @@ sealed class Screen(val route: String) {
     data object Detail : Screen("detail/{mediaId}/{mediaType}") {
         fun createRoute(mediaId: Int, mediaType: String) = "detail/$mediaId/$mediaType"
     }
-    data object StreamPlayer : Screen("stream_player/{encodedUrl}/{quality}/{providerName}/{title}") {
+    data object StreamPlayer : Screen("stream_player/{encodedUrl}/{quality}/{providerName}/{title}/{mediaId}/{mediaType}") {
         fun createRoute(
             encodedUrl: String,
             quality: String,
             providerName: String,
-            title: String
-        ) = "stream_player/${encodedUrl}/${quality}/${providerName}/${title}"
+            title: String,
+            mediaId: Int,
+            mediaType: String
+        ) = "stream_player/${encodedUrl}/${quality}/${providerName}/${title}/${mediaId}/${mediaType}"
     }
     data object StreamList : Screen("stream_list/{mediaId}/{mediaType}") {
         fun createRoute(mediaId: Int, mediaType: String) = "stream_list/$mediaId/$mediaType"

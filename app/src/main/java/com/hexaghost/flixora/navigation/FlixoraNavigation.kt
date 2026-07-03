@@ -190,7 +190,7 @@ fun FlixoraNavigation(
                         val encodedProvider = URLEncoder.encode(stream.providerName, StandardCharsets.UTF_8.toString())
                         val encodedTitle = URLEncoder.encode(title, StandardCharsets.UTF_8.toString())
                         navController.navigate(
-                            Screen.StreamPlayer.createRoute(encodedUrl, encodedQuality, encodedProvider, encodedTitle)
+                            Screen.StreamPlayer.createRoute(encodedUrl, encodedQuality, encodedProvider, encodedTitle, mediaId, mediaType)
                         )
                     }
                 )
@@ -210,13 +210,13 @@ fun FlixoraNavigation(
                     mediaType = mediaType,
                     preferencesManager = preferencesManager,
                     onBack = { navController.popBackStack() },
-                    onPlayStream = { stream, title ->
+                    onPlayStream = { stream, title, mId, mType ->
                         val encodedUrl = java.net.URLEncoder.encode(stream.url, java.nio.charset.StandardCharsets.UTF_8.toString())
                         val encodedQuality = java.net.URLEncoder.encode(stream.quality, java.nio.charset.StandardCharsets.UTF_8.toString())
                         val encodedProvider = java.net.URLEncoder.encode(stream.providerName, java.nio.charset.StandardCharsets.UTF_8.toString())
                         val encodedTitle = java.net.URLEncoder.encode(title, java.nio.charset.StandardCharsets.UTF_8.toString())
                         navController.navigate(
-                            Screen.StreamPlayer.createRoute(encodedUrl, encodedQuality, encodedProvider, encodedTitle)
+                            Screen.StreamPlayer.createRoute(encodedUrl, encodedQuality, encodedProvider, encodedTitle, mId, mType)
                         )
                     }
                 )
@@ -228,13 +228,17 @@ fun FlixoraNavigation(
                     navArgument("encodedUrl") { type = NavType.StringType },
                     navArgument("quality") { type = NavType.StringType },
                     navArgument("providerName") { type = NavType.StringType },
-                    navArgument("title") { type = NavType.StringType }
+                    navArgument("title") { type = NavType.StringType },
+                    navArgument("mediaId") { type = NavType.IntType },
+                    navArgument("mediaType") { type = NavType.StringType }
                 )
             ) { backStackEntry ->
                 val encodedUrl = backStackEntry.arguments?.getString("encodedUrl") ?: return@composable
                 val quality = backStackEntry.arguments?.getString("quality") ?: "Auto"
                 val providerName = backStackEntry.arguments?.getString("providerName") ?: ""
                 val title = backStackEntry.arguments?.getString("title") ?: ""
+                val mediaId = backStackEntry.arguments?.getInt("mediaId") ?: 0
+                val mediaType = backStackEntry.arguments?.getString("mediaType") ?: "movie"
                 val decodedUrl = URLDecoder.decode(encodedUrl, StandardCharsets.UTF_8.toString())
                 val decodedQuality = URLDecoder.decode(quality, StandardCharsets.UTF_8.toString())
                 val decodedProvider = URLDecoder.decode(providerName, StandardCharsets.UTF_8.toString())
@@ -247,6 +251,8 @@ fun FlixoraNavigation(
                         providerName = decodedProvider
                     ),
                     mediaTitle = decodedTitle,
+                    mediaId = mediaId,
+                    mediaType = mediaType,
                     preferencesManager = preferencesManager,
                     onBack = { navController.popBackStack() }
                 )

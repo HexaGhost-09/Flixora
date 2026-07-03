@@ -37,17 +37,21 @@ import com.hexaghost.flixora.domain.model.StreamResult
 import com.hexaghost.flixora.ui.theme.*
 import com.hexaghost.flixora.data.local.PreferencesManager
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(UnstableApi::class)
 @Composable
 fun StreamPlayerScreen(
     stream: StreamResult,
     mediaTitle: String,
+    mediaId: Int,
+    mediaType: String,
     preferencesManager: PreferencesManager,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
+    val traktManager = remember { com.hexaghost.flixora.data.api.TraktManager() }
 
     // Lock to landscape
     DisposableEffect(Unit) {
@@ -75,12 +79,22 @@ fun StreamPlayerScreen(
     var duration by remember { mutableLongStateOf(0L) }
     var showTraktScrobbleStatus by remember { mutableStateOf(false) }
 
-    // Trakt Scrobbling Toast
+    // Trakt Scrobbling Lifecycle (Start & Pause)
     LaunchedEffect(isPlaying) {
-        if (isPlaying && preferencesManager.isTraktConnected) {
-            showTraktScrobbleStatus = true
-            delay(4000)
-            showTraktScrobbleStatus = false
+        if (preferencesManager.isTraktConnected && mediaId != 0) {
+            val token = preferencesManager.traktToken
+            val clientId = preferencesManager.traktClientId
+            if (token.isNotEmpty() && clientId.isNotEmpty()) {
+                showTraktScrobbleStatus = true
+                val progress = if (duration > 0L) (currentPosition.toFloat() / duration.toFloat()) * 100f else 0f
+                if (isPlaying) {
+                    traktManager.scrobble("start", token, clientId, mediaId, mediaType, progress)
+                } else {
+                    traktManager.scrobble("pause", token, clientId, mediaId, mediaType, progress)
+                }
+                delay(4000)
+                showTraktScrobbleStatus = false
+            }
         }
     }
 
@@ -125,6 +139,17 @@ fun StreamPlayerScreen(
         onDispose {
             exoPlayer.removeListener(listener)
             exoPlayer.release()
+
+            if (preferencesManager.isTraktConnected && mediaId != 0) {
+                val token = preferencesManager.traktToken
+                val clientId = preferencesManager.traktClientId
+                if (token.isNotEmpty() && clientId.isNotEmpty()) {
+                    val finalProgress = if (duration > 0L) (currentPosition.toFloat() / duration.toFloat()) * 100f else 0f
+                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                        traktManager.scrobble("stop", token, clientId, mediaId, mediaType, finalProgress)
+                    }
+                }
+            }
         }
     }
 

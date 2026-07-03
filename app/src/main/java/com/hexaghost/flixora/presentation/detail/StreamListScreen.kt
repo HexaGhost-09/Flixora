@@ -44,7 +44,7 @@ fun StreamListScreen(
     mediaType: String,
     preferencesManager: PreferencesManager,
     onBack: () -> Unit,
-    onPlayStream: (StreamResult, String) -> Unit,
+    onPlayStream: (StreamResult, String, Int, String) -> Unit,
     viewModel: StreamListViewModel = hiltViewModel()
 ) {
     LaunchedEffect(mediaId, mediaType) {
@@ -274,7 +274,7 @@ fun StreamListScreen(
                                                     )
                                                 )
                                             }
-                                            onPlayStream(stream, uiState.detail?.title ?: "")
+                                            onPlayStream(stream, uiState.detail?.title ?: "", mediaId, mediaType)
                                         }
                                     )
                                 }

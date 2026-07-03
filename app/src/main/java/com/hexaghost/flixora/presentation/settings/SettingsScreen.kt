@@ -159,128 +159,172 @@ fun SettingsScreen(
 
         // Settings Categories
         SettingsHeader(title = "App Settings")
-        SettingsToggleRow(
-            icon = Icons.Filled.Wifi,
-            title = "Download over Wi-Fi only",
-            description = "Saves mobile data usage",
-            checked = wifiOnlyDownload,
-            onCheckedChange = {
-                wifiOnlyDownload = it
-                preferencesManager.wifiOnlyDownload = it
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 4.dp),
+            colors = CardDefaults.cardColors(containerColor = FlixoraDarkSurface),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color(0x0DFFFFFF))
+        ) {
+            Column {
+                SettingsToggleRow(
+                    icon = Icons.Filled.Wifi,
+                    title = "Download over Wi-Fi only",
+                    description = "Saves mobile data usage",
+                    checked = wifiOnlyDownload,
+                    onCheckedChange = {
+                        wifiOnlyDownload = it
+                        preferencesManager.wifiOnlyDownload = it
+                    }
+                )
+                HorizontalDivider(color = Color(0x0DFFFFFF), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                SettingsToggleRow(
+                    icon = Icons.Filled.HighQuality,
+                    title = "High Quality Streaming",
+                    description = "Stream in HD quality where available",
+                    checked = highQualityStreaming,
+                    onCheckedChange = {
+                        highQualityStreaming = it
+                        preferencesManager.highQualityStreaming = it
+                    }
+                )
+                HorizontalDivider(color = Color(0x0DFFFFFF), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                SettingsClickableRow(
+                    icon = Icons.Filled.Language,
+                    title = "App Language",
+                    value = selectedLanguage,
+                    onClick = {
+                        val nextLanguage = if (selectedLanguage == "English") "Spanish" else "English"
+                        selectedLanguage = nextLanguage
+                        preferencesManager.selectedLanguage = nextLanguage
+                    }
+                )
             }
-        )
-        SettingsToggleRow(
-            icon = Icons.Filled.HighQuality,
-            title = "High Quality Streaming",
-            description = "Stream in HD quality where available",
-            checked = highQualityStreaming,
-            onCheckedChange = {
-                highQualityStreaming = it
-                preferencesManager.highQualityStreaming = it
-            }
-        )
-        SettingsToggleRow(
-            icon = Icons.Filled.SystemUpdate,
-            title = "Auto Check Updates",
-            description = "Check for updates on app startup",
-            checked = autoCheckUpdates,
-            onCheckedChange = {
-                autoCheckUpdates = it
-                updateManager.isAutoCheckEnabled = it
-            }
-        )
-
-        SettingsClickableRow(
-            icon = Icons.Filled.Language,
-            title = "App Language",
-            value = selectedLanguage,
-            onClick = {
-                val nextLanguage = if (selectedLanguage == "English") "Spanish" else "English"
-                selectedLanguage = nextLanguage
-                preferencesManager.selectedLanguage = nextLanguage
-            }
-        )
-
-        SettingsClickableRow(
-            icon = Icons.Filled.AccountCircle,
-            title = if (isLoggedIn) "Account Logout" else "Account Login",
-            value = if (isLoggedIn) (authUiState.user?.name ?: "Logged In") else "Not Logged In",
-            onClick = {
-                if (isLoggedIn) {
-                    authViewModel.signOut()
-                    android.widget.Toast.makeText(context, "Logged out successfully", android.widget.Toast.LENGTH_SHORT).show()
-                } else {
-                    showAuthDialog = true
-                }
-            }
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
+        }
 
         SettingsHeader(title = "Trakt Connection")
-        SettingsClickableRow(
-            icon = Icons.Filled.Sync,
-            title = if (isTraktConnected) "Connected as $traktUsername" else "Connect Trakt Account",
-            value = if (isTraktConnected) "Disconnect" else "Tap to connect",
-            onClick = {
-                if (isTraktConnected) {
-                    preferencesManager.disconnectTrakt()
-                    isTraktConnected = false
-                    traktUsername = ""
-                    android.widget.Toast.makeText(context, "Disconnected from Trakt", android.widget.Toast.LENGTH_SHORT).show()
-                } else {
-                    showTraktDialog = true
-                }
-            }
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        SettingsHeader(title = "Cache & Info")
-        SettingsClickableRow(
-            icon = Icons.Filled.DeleteSweep,
-            title = "Clear Search History",
-            value = "",
-            onClick = {
-                preferencesManager.clearSearchHistory()
-                android.widget.Toast.makeText(context, "Search history cleared", android.widget.Toast.LENGTH_SHORT).show()
-            }
-        )
-        SettingsClickableRow(
-            icon = Icons.Filled.CloudDownload,
-            title = if (isCheckingUpdates) "Checking for Updates..." else "Check for Updates",
-            value = "",
-            onClick = {
-                if (!isCheckingUpdates) {
-                    scope.launch {
-                        isCheckingUpdates = true
-                        val result = updateManager.checkForUpdates(isManual = true)
-                        isCheckingUpdates = false
-                        when (result) {
-                            is UpdateState.UpToDate -> {
-                                android.widget.Toast.makeText(context, "You are on the latest version!", android.widget.Toast.LENGTH_SHORT).show()
-                            }
-                            is UpdateState.Error -> {
-                                android.widget.Toast.makeText(context, "Update check failed: ${result.message}", android.widget.Toast.LENGTH_SHORT).show()
-                            }
-                            else -> {}
-                        }
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 4.dp),
+            colors = CardDefaults.cardColors(containerColor = FlixoraDarkSurface),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color(0x0DFFFFFF))
+        ) {
+            SettingsClickableRow(
+                icon = Icons.Filled.Sync,
+                title = if (isTraktConnected) "Connected as $traktUsername" else "Connect Trakt Account",
+                value = if (isTraktConnected) "Disconnect" else "Tap to connect",
+                onClick = {
+                    if (isTraktConnected) {
+                        preferencesManager.disconnectTrakt()
+                        isTraktConnected = false
+                        traktUsername = ""
+                        android.widget.Toast.makeText(context, "Disconnected from Trakt", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        showTraktDialog = true
                     }
                 }
+            )
+        }
+
+        SettingsHeader(title = "Account & System")
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 4.dp),
+            colors = CardDefaults.cardColors(containerColor = FlixoraDarkSurface),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color(0x0DFFFFFF))
+        ) {
+            Column {
+                SettingsClickableRow(
+                    icon = Icons.Filled.AccountCircle,
+                    title = if (isLoggedIn) "Account Logout" else "Account Login",
+                    value = if (isLoggedIn) (authUiState.user?.name ?: "Logged In") else "Not Logged In",
+                    onClick = {
+                        if (isLoggedIn) {
+                            authViewModel.signOut()
+                            android.widget.Toast.makeText(context, "Logged out successfully", android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            showAuthDialog = true
+                        }
+                    }
+                )
+                HorizontalDivider(color = Color(0x0DFFFFFF), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                SettingsToggleRow(
+                    icon = Icons.Filled.SystemUpdate,
+                    title = "Auto Check Updates",
+                    description = "Check for updates on app startup",
+                    checked = autoCheckUpdates,
+                    onCheckedChange = {
+                        autoCheckUpdates = it
+                        updateManager.isAutoCheckEnabled = it
+                    }
+                )
+                HorizontalDivider(color = Color(0x0DFFFFFF), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                SettingsClickableRow(
+                    icon = Icons.Filled.CloudDownload,
+                    title = if (isCheckingUpdates) "Checking for Updates..." else "Check for Updates",
+                    value = "",
+                    onClick = {
+                        if (!isCheckingUpdates) {
+                            scope.launch {
+                                isCheckingUpdates = true
+                                val result = updateManager.checkForUpdates(isManual = true)
+                                isCheckingUpdates = false
+                                when (result) {
+                                    is UpdateState.UpToDate -> {
+                                        android.widget.Toast.makeText(context, "You are on the latest version!", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                    is UpdateState.Error -> {
+                                        android.widget.Toast.makeText(context, "Update check failed: ${result.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                    else -> {}
+                                }
+                            }
+                        }
+                    }
+                )
             }
-        )
-        SettingsClickableRow(
-            icon = Icons.Filled.Info,
-            title = "App Version",
-            value = BuildConfig.VERSION_NAME,
-            onClick = {}
-        )
-        SettingsClickableRow(
-            icon = Icons.Filled.BugReport,
-            title = "Build Code",
-            value = BuildConfig.VERSION_CODE.toString(),
-            onClick = {}
-        )
+        }
+
+        SettingsHeader(title = "Cache & About")
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 4.dp),
+            colors = CardDefaults.cardColors(containerColor = FlixoraDarkSurface),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color(0x0DFFFFFF))
+        ) {
+            Column {
+                SettingsClickableRow(
+                    icon = Icons.Filled.DeleteSweep,
+                    title = "Clear Search History",
+                    value = "",
+                    onClick = {
+                        preferencesManager.clearSearchHistory()
+                        android.widget.Toast.makeText(context, "Search history cleared", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                )
+                HorizontalDivider(color = Color(0x0DFFFFFF), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                SettingsClickableRow(
+                    icon = Icons.Filled.Info,
+                    title = "App Version",
+                    value = BuildConfig.VERSION_NAME,
+                    onClick = {}
+                )
+                HorizontalDivider(color = Color(0x0DFFFFFF), thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                SettingsClickableRow(
+                    icon = Icons.Filled.BugReport,
+                    title = "Build Code",
+                    value = BuildConfig.VERSION_CODE.toString(),
+                    onClick = {}
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(80.dp)) // Offset bottom bar
     }

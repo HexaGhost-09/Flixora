@@ -34,6 +34,14 @@ class PreferencesManager @Inject constructor(
         get() = prefs.getString("trakt_token", "") ?: ""
         set(value) = prefs.edit().putString("trakt_token", value).apply()
 
+    var traktClientId: String
+        get() = prefs.getString("trakt_client_id", "") ?: ""
+        set(value) = prefs.edit().putString("trakt_client_id", value).apply()
+
+    var traktClientSecret: String
+        get() = prefs.getString("trakt_client_secret", "") ?: ""
+        set(value) = prefs.edit().putString("trakt_client_secret", value).apply()
+
     val isTraktConnected: Boolean
         get() = traktToken.isNotEmpty()
 
